@@ -1,6 +1,9 @@
 import torch
+import torchmetrics
 import torch.nn as nn
 import torch.nn.functional as F
+import pytorch_lightning as pl
+from pytorch_lightning import Trainer
 
 class Bottleneck(nn.Module):
     expansion = 4
@@ -127,19 +130,65 @@ class TailNetwork(nn.Module):
         final_out = self.linear(out)
         return final_out
 
-# Combine all parts into a single model
-class EarlyExitResNet50(nn.Module):
+class EarlyExitResNet50(pl.LightningModule):
     def __init__(self, num_classes=10):
         super(EarlyExitResNet50, self).__init__()
         self.head1 = HeadNetworkPart1(Bottleneck, 64, [3], num_classes)
         self.head2 = HeadNetworkPart2(Bottleneck, 256, [4], num_classes)
         self.head3 = HeadNetworkPart3(Bottleneck, 512, [6], num_classes)
         self.tail = TailNetwork(Bottleneck, 1024, [3], num_classes)
-
+        self.accuracy = torchmetrics.Accuracy(task="multiclass",num_classes=10)
+        self.test_step_outputs = []
     def forward(self, x):
         out, ee1_out = self.head1(x)
         out, ee2_out = self.head2(out)
         out, ee3_out = self.head3(out)
         final_out = self.tail(out)
         return ee1_out, ee2_out, ee3_out, final_out
-   
+
+    def training_step(self, batch, batch_idx):
+        inputs, targets = batch
+        ee1_out, ee2_out, ee3_out, final_out = self(inputs)
+        ce_loss1 = F.cross_entropy(ee1_out, targets)
+        ce_loss2 = F.cross_entropy(ee2_out, targets)
+        ce_loss3 = F.cross_entropy(ee3_out, targets)
+        ce_loss_final = F.cross_entropy(final_out, targets)
+        loss = ce_loss1 + ce_loss2 + ce_loss3 + ce_loss_final
+        self.log('train_loss', loss.item())
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        inputs, targets = batch
+        ee1_out, ee2_out, ee3_out, final_out = self(inputs)
+        ce_loss1 = F.cross_entropy(ee1_out, targets)
+        ce_loss2 = F.cross_entropy(ee2_out, targets)
+        ce_loss3 = F.cross_entropy(ee3_out, targets)
+        ce_loss_final = F.cross_entropy(final_out, targets)
+        loss = ce_loss1 + ce_loss2 + ce_loss3 + ce_loss_final
+        self.log('val_loss', loss.item())
+        return loss
+    
+    
+    def test_step(self, batch, batch_idx):
+        inputs, targets = batch
+        ee1_out, ee2_out, ee3_out, final_out = self(inputs)
+        ce_loss1 = F.cross_entropy(ee1_out, targets)
+        ce_loss2 = F.cross_entropy(ee2_out, targets)
+        ce_loss3 = F.cross_entropy(ee3_out, targets)
+        ce_loss_final = F.cross_entropy(final_out, targets)
+        loss = ce_loss1 + ce_loss2 + ce_loss3 + ce_loss_final
+        self.log('test_loss', loss.item())
+
+        self.test_step_outputs.append(loss)
+
+        preds = torch.argmax(final_out, dim=1)
+        acc = self.accuracy(preds, targets)
+        self.log('test_acc', acc, on_step=True, on_epoch=True)
+
+        return acc
+    def on_test_epoch_end(self):
+        epoch_average = torch.stack(self.test_step_outputs).mean()
+        self.log("test_epoch_average", epoch_average)
+        self.test_step_outputs.clear()  # free memory
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=0.001)

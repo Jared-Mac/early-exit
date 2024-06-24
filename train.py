@@ -1,5 +1,7 @@
 import torch
-def train_model(model, train_loader, criterion, optimizer, epochs=1):
+import tqdm 
+
+def train_model(model, train_loader, criterion, optimizer, epochs=1, device="cuda"):
     model.train()  # Set the model to training mode
     for epoch in range(epochs):  # Loop over the dataset multiple times
         running_loss = 0.0
@@ -38,7 +40,7 @@ def train_model(model, train_loader, criterion, optimizer, epochs=1):
 def evaluate_model(model, test_loader, device):
     model.eval()  # Set model to evaluation mode
     total_samples = len(test_loader.dataset)
-    correct_predictions = [0, 0, 0]  # Assuming three exits
+    correct_predictions = [0, 0, 0, 0]  # Assuming three exits
 
     with torch.no_grad():  # No need to compute gradients
         for inputs, labels in test_loader:
