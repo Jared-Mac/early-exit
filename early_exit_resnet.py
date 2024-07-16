@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 
-class Bottleneck(nn.Module):
+class Bottleneck(pl.LightningModule):
     expansion = 4
     def __init__(self, in_planes, planes, stride=1):
         super(Bottleneck, self).__init__()
@@ -31,7 +31,7 @@ class Bottleneck(nn.Module):
         out = F.relu(out)
         return out
 
-class EarlyExitBlock(nn.Module):
+class EarlyExitBlock(pl.LightningModule):
     def __init__(self, in_planes, num_classes):
         super(EarlyExitBlock, self).__init__()
         self.classifier = nn.Sequential(
@@ -45,7 +45,7 @@ class EarlyExitBlock(nn.Module):
     def forward(self, x):
         return self.classifier(x)
 
-class HeadNetworkPart1(nn.Module):
+class HeadNetworkPart1(pl.LightningModule):
     def __init__(self, block, in_planes, num_blocks, num_classes=10):
         super(HeadNetworkPart1, self).__init__()
         self.in_planes = in_planes
@@ -68,7 +68,7 @@ class HeadNetworkPart1(nn.Module):
         ee1_out = self.early_exit_1(out)
         return out, ee1_out
 
-class HeadNetworkPart2(nn.Module):
+class HeadNetworkPart2(pl.LightningModule):
     def __init__(self, block, in_planes, num_blocks, num_classes=10):
         super(HeadNetworkPart2, self).__init__()
         self.in_planes = in_planes
@@ -88,7 +88,7 @@ class HeadNetworkPart2(nn.Module):
         ee2_out = self.early_exit_2(out)
         return out, ee2_out
 
-class HeadNetworkPart3(nn.Module):
+class HeadNetworkPart3(pl.LightningModule):
     def __init__(self, block, in_planes, num_blocks, num_classes=10):
         super(HeadNetworkPart3, self).__init__()
         self.in_planes = in_planes
@@ -108,7 +108,7 @@ class HeadNetworkPart3(nn.Module):
         ee3_out = self.early_exit_3(out)
         return out, ee3_out
 
-class TailNetwork(nn.Module):
+class TailNetwork(pl.LightningModule):
     def __init__(self, block, in_planes, num_blocks, num_classes=10):
         super(TailNetwork, self).__init__()
         self.in_planes = in_planes
@@ -133,12 +133,18 @@ class TailNetwork(nn.Module):
 class EarlyExitResNet50(pl.LightningModule):
     def __init__(self, num_classes=10):
         super(EarlyExitResNet50, self).__init__()
+        self.example_input_array = torch.rand(1, 3, 254, 254)
         self.head1 = HeadNetworkPart1(Bottleneck, 64, [3], num_classes)
         self.head2 = HeadNetworkPart2(Bottleneck, 256, [4], num_classes)
         self.head3 = HeadNetworkPart3(Bottleneck, 512, [6], num_classes)
         self.tail = TailNetwork(Bottleneck, 1024, [3], num_classes)
-        self.accuracy = torchmetrics.Accuracy(task="multiclass",num_classes=10)
+        self.accuracy1 = torchmetrics.Accuracy(num_classes=num_classes,task="multiclass")
+        self.accuracy2 = torchmetrics.Accuracy(num_classes=num_classes,task="multiclass")
+        self.accuracy3 = torchmetrics.Accuracy(num_classes=num_classes,task="multiclass")
+        self.accuracyfinal = torchmetrics.Accuracy(num_classes=num_classes,task="multiclass")
+        
         self.test_step_outputs = []
+        self.save_hyperparameters()
     def forward(self, x):
         out, ee1_out = self.head1(x)
         out, ee2_out = self.head2(out)
@@ -180,12 +186,23 @@ class EarlyExitResNet50(pl.LightningModule):
         self.log('test_loss', loss.item())
 
         self.test_step_outputs.append(loss)
+        preds1 = torch.argmax(ee1_out, dim=1)
+        preds2 = torch.argmax(ee2_out, dim=1)
+        preds3 = torch.argmax(ee3_out, dim=1)
+        predsfinal = torch.argmax(final_out, dim=1)
 
-        preds = torch.argmax(final_out, dim=1)
-        acc = self.accuracy(preds, targets)
-        self.log('test_acc', acc, on_step=True, on_epoch=True)
+        acc1 = self.accuracy1(preds1, targets)
+        acc2 = self.accuracy2(preds2, targets)
+        acc3 = self.accuracy3(preds3, targets)
+        accfinal = self.accuracyfinal(predsfinal, targets)
+        
+        self.log('test_acc_exit_1', acc1, on_step=True, on_epoch=True)
+        self.log('test_acc_exit_2', acc2, on_step=True, on_epoch=True)
+        self.log('test_acc_exit_3', acc3, on_step=True, on_epoch=True)
+        self.log('test_acc_exit_final', accfinal, on_step=True, on_epoch=True)
 
-        return acc
+        return acc1, acc2, acc3, accfinal
+        
     def on_test_epoch_end(self):
         epoch_average = torch.stack(self.test_step_outputs).mean()
         self.log("test_epoch_average", epoch_average)

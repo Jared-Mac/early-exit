@@ -2,6 +2,7 @@ import os
 import re
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
+from torch.nn import Softmax
 from torchvision import transforms
 from PIL import Image
 import pytorch_lightning as pl
@@ -56,16 +57,19 @@ class Flame2Data(Dataset):
         raise ValueError(f"Frame number {frame_number} out of defined ranges")
 
 class Flame2DataModule(pl.LightningDataModule):
-    def __init__(self, image_dir, batch_size=32, transform=None, train_val_test_split=(0.7, 0.15, 0.15)):
+    def __init__(self, image_dir, batch_size=32, transform=None, train_val_test_split=(0.7, 0.15, 0.15), seed=42):
         super().__init__()
         self.image_dir = image_dir
         self.batch_size = batch_size
         self.transform = transform
         self.train_val_test_split = train_val_test_split
+        self.seed = seed
 
     def setup(self, stage=None):
         full_dataset = Flame2Data(self.image_dir, self.transform)
-        
+
+        # Set random seed for reproducibility
+        torch.manual_seed(self.seed)
         # Calculate split lengths
         total_size = len(full_dataset)
         train_size = int(self.train_val_test_split[0] * total_size)
@@ -76,10 +80,32 @@ class Flame2DataModule(pl.LightningDataModule):
         self.train_dataset, self.val_dataset, self.test_dataset = random_split(full_dataset, [train_size, val_size, test_size])
     
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, pin_memory=True, num_workers=8)
     
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False)
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers=8)
     
     def test_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False)
+        return DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers=8)
+        
+    def evaluate_model(self, model, device):
+        model.eval()  # Set model to evaluation mode
+        model = model.to(device)
+        test_loader = self.test_dataloader()  # Use the datamodule's test dataloader
+        total_samples = len(test_loader.dataset)
+        correct_predictions = [0, 0, 0, 0]  # Adjust if you have a different number of exits
+
+        with torch.no_grad():  # No need to compute gradients
+            for inputs, labels in test_loader:
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+
+                exits = model(inputs)  # Forward pass
+                softmax = Softmax(dim=1)
+                
+                for i, exit in enumerate(exits):
+                    predictions = softmax(exit).argmax(dim=1)
+                    correct_predictions[i] += (predictions == labels).type(torch.float).sum().item()
+
+        accuracies = [correct / total_samples for correct in correct_predictions]
+        return accuracies
