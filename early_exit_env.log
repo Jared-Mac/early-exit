@@ -1,0 +1,548 @@
+INFO:root:Environment initialized
+INFO:root:Environment reset
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 0, True Class: 2, Reward: 8
+INFO:root:Episode 0, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 1, Prediction: 3, True Class: 5, Reward: 5
+INFO:root:Episode 1, Total Reward: 5
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 0, Continuing...
+INFO:root:Step: 5, Action: 0, Continuing...
+INFO:root:Step: 6, Action: 1, Prediction: 6, True Class: 3, Reward: 3
+INFO:root:Episode 2, Total Reward: 3
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 1, Prediction: 0, True Class: 4, Reward: 5
+INFO:root:Episode 3, Total Reward: 5
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 6, True Class: 6, Reward: 10
+INFO:root:Episode 4, Total Reward: 10
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 2, True Class: 0, Reward: 8
+INFO:root:Episode 5, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 0, True Class: 4, Reward: 8
+INFO:root:Episode 6, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 0, True Class: 2, Reward: 7
+INFO:root:Episode 7, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 0, True Class: 5, Reward: 7
+INFO:root:Episode 8, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 6, True Class: 6, Reward: 10
+INFO:root:Episode 9, Total Reward: 10
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 6, True Class: 7, Reward: 7
+INFO:root:Episode 10, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 6, True Class: 8, Reward: 7
+INFO:root:Episode 11, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 6, True Class: 2, Reward: 7
+INFO:root:Episode 12, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 6, True Class: 2, Reward: 8
+INFO:root:Episode 13, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 1, True Class: 8, Reward: 7
+INFO:root:Episode 14, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 0, True Class: 8, Reward: 8
+INFO:root:Episode 15, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 9, True Class: 1, Reward: 8
+INFO:root:Episode 16, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 0, True Class: 6, Reward: 8
+INFO:root:Episode 17, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 0, True Class: 2, Reward: 7
+INFO:root:Episode 18, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 1, Prediction: 6, True Class: 7, Reward: 6
+INFO:root:Episode 19, Total Reward: 6
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 6, True Class: 4, Reward: 8
+INFO:root:Episode 20, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 1, True Class: 3, Reward: 7
+INFO:root:Episode 21, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 1, Prediction: 0, True Class: 6, Reward: 6
+INFO:root:Episode 22, Total Reward: 6
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 4, True Class: 1, Reward: 8
+INFO:root:Episode 23, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 6, True Class: 2, Reward: 8
+INFO:root:Episode 24, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 0, True Class: 3, Reward: 7
+INFO:root:Episode 25, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 2, Reward: 8
+INFO:root:Episode 26, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 6, True Class: 6, Reward: 10
+INFO:root:Episode 27, Total Reward: 10
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 6, True Class: 2, Reward: 7
+INFO:root:Episode 28, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 0, True Class: 8, Reward: 8
+INFO:root:Episode 29, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 6, True Class: 0, Reward: 7
+INFO:root:Episode 30, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 8, Reward: 8
+INFO:root:Episode 31, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 6, True Class: 7, Reward: 8
+INFO:root:Episode 32, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 0, Continuing...
+INFO:root:Step: 5, Action: 1, Prediction: 6, True Class: 7, Reward: 4
+INFO:root:Environment initialized
+INFO:root:Environment reset
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 2, True Class: 2, Reward: 10
+INFO:root:Episode 0, Total Reward: 10
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 7, True Class: 2, Reward: 8
+INFO:root:Episode 1, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 1, Prediction: 2, True Class: 9, Reward: 6
+INFO:root:Episode 2, Total Reward: 6
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 9, True Class: 0, Reward: 7
+INFO:root:Episode 3, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 4, True Class: 0, Reward: 8
+INFO:root:Episode 4, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 7, True Class: 6, Reward: 8
+INFO:root:Episode 5, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 7, True Class: 9, Reward: 8
+INFO:root:Episode 6, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 2, True Class: 9, Reward: 8
+INFO:root:Episode 7, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 2, True Class: 8, Reward: 8
+INFO:root:Episode 8, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 7, True Class: 2, Reward: 8
+INFO:root:Episode 9, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 7, True Class: 3, Reward: 7
+INFO:root:Episode 10, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 7, True Class: 6, Reward: 8
+INFO:root:Episode 11, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 2, True Class: 8, Reward: 8
+INFO:root:Episode 12, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 7, True Class: 6, Reward: 8
+INFO:root:Episode 13, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 7, True Class: 4, Reward: 8
+INFO:root:Episode 14, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 7, True Class: 7, Reward: 10
+INFO:root:Episode 15, Total Reward: 10
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 1, Prediction: 7, True Class: 8, Reward: 5
+INFO:root:Episode 16, Total Reward: 5
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 7, True Class: 5, Reward: 8
+INFO:root:Episode 17, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 6, True Class: 5, Reward: 8
+INFO:root:Episode 18, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 2, True Class: 3, Reward: 8
+INFO:root:Episode 19, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 7, True Class: 7, Reward: 10
+INFO:root:Episode 20, Total Reward: 10
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 2, True Class: 3, Reward: 8
+INFO:root:Episode 21, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 7, True Class: 3, Reward: 8
+INFO:root:Episode 22, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 9, True Class: 9, Reward: 9
+INFO:root:Episode 23, Total Reward: 9
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 1, Prediction: 2, True Class: 4, Reward: 5
+INFO:root:Episode 24, Total Reward: 5
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 7, True Class: 5, Reward: 7
+INFO:root:Episode 25, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 0, Continuing...
+INFO:root:Step: 5, Action: 1, Prediction: 2, True Class: 4, Reward: 4
+INFO:root:Episode 26, Total Reward: 4
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 1, Prediction: 7, True Class: 9, Reward: 6
+INFO:root:Episode 27, Total Reward: 6
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 2, True Class: 0, Reward: 7
+INFO:root:Episode 28, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 7, True Class: 5, Reward: 8
+INFO:root:Episode 29, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 7, True Class: 7, Reward: 10
+INFO:root:Episode 30, Total Reward: 10
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 1, Prediction: 7, True Class: 5, Reward: 6
+INFO:root:Episode 31, Total Reward: 6
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 7, True Class: 8, Reward: 8
+INFO:root:Episode 32, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 1, Prediction: 7, True Class: 8, Reward: 5
+INFO:root:Episode 33, Total Reward: 5
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 9, True Class: 1, Reward: 7
+INFO:root:Episode 34, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 2, True Class: 9, Reward: 8
+INFO:root:Episode 35, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 7, True Class: 1, Reward: 7
+INFO:root:Episode 36, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Environment initialized
+INFO:root:Environment reset
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 1, Prediction: 8, True Class: 7, Reward: 5
+INFO:root:Episode 0, Total Reward: 5
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 8, True Class: 9, Reward: 7
+INFO:root:Episode 1, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 0, Continuing...
+INFO:root:Step: 5, Action: 0, Continuing...
+INFO:root:Step: 6, Action: 0, Continuing...
+INFO:root:Step: 7, Action: 1, Prediction: 8, True Class: 1, Reward: 2
+INFO:root:Episode 2, Total Reward: 2
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 8, True Class: 3, Reward: 7
+INFO:root:Episode 3, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 8, True Class: 3, Reward: 7
+INFO:root:Episode 4, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 2, Reward: 8
+INFO:root:Episode 5, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 1, Prediction: 8, True Class: 8, Reward: 8
+INFO:root:Episode 6, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 9, Reward: 8
+INFO:root:Episode 7, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 5, Reward: 8
+INFO:root:Episode 8, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 5, Reward: 8
+INFO:root:Episode 9, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 3, Reward: 8
+INFO:root:Episode 10, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 0, Reward: 8
+INFO:root:Episode 11, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 7, Reward: 8
+INFO:root:Episode 12, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 5, Reward: 8
+INFO:root:Episode 13, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 8, True Class: 5, Reward: 7
+INFO:root:Episode 14, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 4, Reward: 8
+INFO:root:Episode 15, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 0, Reward: 8
+INFO:root:Episode 16, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 1, Prediction: 8, True Class: 3, Reward: 6
+INFO:root:Episode 17, Total Reward: 6
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 1, Prediction: 8, True Class: 4, Reward: 6
+INFO:root:Episode 18, Total Reward: 6
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 7, Reward: 8
+INFO:root:Episode 19, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 8, True Class: 9, Reward: 7
+INFO:root:Episode 20, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 3, Reward: 8
+INFO:root:Episode 21, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 8, True Class: 2, Reward: 7
+INFO:root:Episode 22, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 8, True Class: 5, Reward: 7
+INFO:root:Episode 23, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 5, Reward: 8
+INFO:root:Episode 24, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 8, True Class: 4, Reward: 7
+INFO:root:Episode 25, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 8, True Class: 9, Reward: 7
+INFO:root:Episode 26, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 8, Reward: 10
+INFO:root:Episode 27, Total Reward: 10
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 1, Reward: 8
+INFO:root:Episode 28, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 1, Prediction: 8, True Class: 3, Reward: 6
+INFO:root:Episode 29, Total Reward: 6
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 2, Reward: 8
+INFO:root:Episode 30, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 8, True Class: 4, Reward: 7
+INFO:root:Episode 31, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 8, True Class: 4, Reward: 8
+INFO:root:Episode 32, Total Reward: 8
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 8, True Class: 9, Reward: 7
+INFO:root:Episode 33, Total Reward: 7
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Environment initialized
+INFO:root:Environment reset
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 5, Reward: 9998
+INFO:root:Episode 0, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 1, Prediction: 3, True Class: 4, Reward: 9996
+INFO:root:Episode 1, Total Reward: 9996
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 3, True Class: 4, Reward: 9997
+INFO:root:Episode 2, Total Reward: 9997
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 3, Reward: 10000
+INFO:root:Episode 3, Total Reward: 10000
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 1, Reward: 9998
+INFO:root:Episode 4, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 1, True Class: 9, Reward: 9998
+INFO:root:Episode 5, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 1, Prediction: 3, True Class: 2, Reward: 9996
+INFO:root:Episode 6, Total Reward: 9996
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 2, True Class: 4, Reward: 9998
+INFO:root:Episode 7, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 1, Prediction: 3, True Class: 2, Reward: 9995
+INFO:root:Episode 8, Total Reward: 9995
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 2, True Class: 5, Reward: 9998
+INFO:root:Episode 9, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 1, Reward: 9998
+INFO:root:Episode 10, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 0, Continuing...
+INFO:root:Step: 5, Action: 1, Prediction: 0, True Class: 3, Reward: 9994
+INFO:root:Episode 11, Total Reward: 9994
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 2, True Class: 7, Reward: 9998
+INFO:root:Episode 12, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 6, True Class: 0, Reward: 9998
+INFO:root:Episode 13, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 0, Reward: 9998
+INFO:root:Episode 14, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 1, Prediction: 3, True Class: 7, Reward: 9996
+INFO:root:Episode 15, Total Reward: 9996
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 5, True Class: 7, Reward: 9998
+INFO:root:Episode 16, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 4, True Class: 4, Reward: 10000
+INFO:root:Episode 17, Total Reward: 10000
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 1, True Class: 4, Reward: 9998
+INFO:root:Episode 18, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 1, Prediction: 4, True Class: 2, Reward: 9995
+INFO:root:Episode 19, Total Reward: 9995
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 9, Reward: 9998
+INFO:root:Episode 20, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 4, True Class: 5, Reward: 9998
+INFO:root:Episode 21, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 2, True Class: 3, Reward: 9998
+INFO:root:Episode 22, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 0, Reward: 9998
+INFO:root:Episode 23, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 2, Reward: 9998
+INFO:root:Episode 24, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 1, True Class: 2, Reward: 9998
+INFO:root:Episode 25, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 3, True Class: 4, Reward: 9997
+INFO:root:Episode 26, Total Reward: 9997
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 0, Reward: 9998
+INFO:root:Episode 27, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 2, True Class: 3, Reward: 9997
+INFO:root:Episode 28, Total Reward: 9997
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 8, Reward: 9998
+INFO:root:Episode 29, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 1, Prediction: 3, True Class: 8, Reward: 9995
+INFO:root:Episode 30, Total Reward: 9995
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
+INFO:root:Step: 3, Action: 0, Continuing...
+INFO:root:Step: 4, Action: 1, Prediction: 1, True Class: 1, Reward: 9997
+INFO:root:Episode 31, Total Reward: 9997
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 5, Reward: 9998
+INFO:root:Episode 32, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 0, Reward: 9998
+INFO:root:Episode 33, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 1, Prediction: 2, True Class: 1, Reward: 9997
+INFO:root:Episode 34, Total Reward: 9997
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 1, Prediction: 3, True Class: 2, Reward: 9998
+INFO:root:Episode 35, Total Reward: 9998
+INFO:root:Environment reset
+INFO:root:Step: 1, Action: 0, Continuing...
+INFO:root:Step: 2, Action: 0, Continuing...
