@@ -45,9 +45,10 @@ class DQNet(nn.Module):
         
         # Another fully connected layer to process logits and exit
         self.fc2 = nn.Linear(num_logits + num_exit + 512, 256)
+        self.fc3 = nn.Linear(256, 128)
         
         # Output layer for actions
-        self.fc3 = nn.Linear(256, num_actions)
+        self.fc4 = nn.Linear(128, num_actions)
     
     def forward(self, exits, image, logits):
         # Process CIFAR-10 image through convolutional layers
@@ -65,8 +66,9 @@ class DQNet(nn.Module):
         combined = torch.cat((x, logits, exits), dim=1)
         # Process combined features
         combined = F.relu(self.fc2(combined))
+        combined = F.relu(self.fc3(combined))
         # Output actions
-        actions = self.fc3(combined)
+        actions = self.fc4(combined)
 
         return actions
     # def __init__(self, input_shape, num_classes):
@@ -206,26 +208,26 @@ class EarlyExitEnv(gym.Env):
     def step(self, action):
         assert self.action_space.contains(action)
         
-        # Exit Action & Send Data
+        # Exit & Check Logits for accuracy
         if action == 1 or self.model_index == self.max_steps - 1:
             pred_class = torch.argmax(self.logits).item()
             accuracy = (pred_class == self.label)
             
             reward = 10 if accuracy else -10
-              # Encourage earlier exits
+
             self.done = True
+
             logging.info(f'Step: {self.steps}, Model Index: {self.model_index}, Action: {action}, Prediction: {pred_class}, True Class: {self.label}, Reward: {reward}')
-        # Continue Action
+        
+        # Continue and fetch logits from next block
         else:
-            self.model_index += 1
             self.logits = self._get_logits()
             reward = - self.steps
             accuracy = None
             logging.info(f'Step: {self.steps}, Model Index: {self.model_index}, Action: {action}, Continuing...')
-        if self.steps < 3:
-            self.steps += 1
 
-        return {'exit': self.exit[self.steps].detach(), 'logits': self.logits.detach().numpy(), 'image': self.image.numpy()}, reward, self.done, {'accuracy': accuracy}
+
+        return {'exit': self.exit[self.steps].clone(), 'logits': self.logits.clone().detach().numpy(), 'image': self.image.clone().numpy()}, reward, self.done, {'accuracy': accuracy}
 
     def reset(self):
         self.steps = 0
@@ -235,7 +237,7 @@ class EarlyExitEnv(gym.Env):
         self.model_index = 0
         self.logits = self._get_logits()
         logging.info('Environment reset')
-        return {'exit': self.exit[self.steps].detach(),'logits': self.logits.detach().numpy(), 'image': self.image.numpy()}
+        return {'exit': self.exit[self.steps].clone().detach(),'logits': self.logits.clone().detach().numpy(), 'image': self.image.clone().numpy()}
 
 
     def _get_next_data(self):
@@ -252,6 +254,7 @@ class EarlyExitEnv(gym.Env):
             self.feature, self.logits = out[0], out[1]      
         else:
             self.logits = out
+        self.model_index += 1
         return self.logits
     
     def render():
@@ -261,7 +264,6 @@ if __name__ == '__main__':
 
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.5,0.5,0.5),std=1),
     ])
     test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True,transform=transform)
     dataloader = DataLoader(test_set, batch_size=1, shuffle=True, num_workers=1)
@@ -296,35 +298,26 @@ if __name__ == '__main__':
         accuracy = 0
         total = 0.0
         count = 0
+        correct_predictions = 0
+        total_predictions = 0
+
         for episode in range(num_episodes):
             state = env.reset()
-            episode_reward = 0
             done = False
-            for t in range(env.max_steps):
-                
-                action = agent.select_action(state['exit'],state['image'],state['logits'])
+            while not done:
+                action = agent.select_action(state['exit'], state['image'], state['logits'])
                 next_state, reward, done, info = env.step(action)
-                correct = info['accuracy']
-                if correct is not None:
-                    # Calculate running average
-                    total += correct
-                    count += 1
-                episode_reward += reward
-
                 agent.store_experience((state, action, reward, next_state, done))
                 agent.update()
                 state = next_state
 
-                if done:
-                    break
-
-
-            # Update the target model occasionally
+                if info['accuracy'] is not None:
+                    correct_predictions += 1 if info['accuracy'] else 0
+                    total_predictions += 1
+                epoch_reward += reward
             if episode % target_update_freq == 0:
                 agent.update_target_model()
 
-            # print(f'Episode {episode}, Episode Reward: {episode_reward}')
-            # logging.info(f'Episode {episode}, Episode Reward: {episode_reward}')
-            epoch_reward = epoch_reward + episode_reward
-        print(f'Epoch {epoch}, Reward: {epoch_reward}, Accuracy: {(total / count)}')
-        logging.info(f'Epoch {epoch}, Epoch Reward: {epoch_reward}')
+        epoch_accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0
+        print(f"Epoch {epoch}, Reward: {epoch_reward}, Accuracy: {epoch_accuracy}")
+        logging.info(f"Epoch {epoch}, Epoch Reward: {epoch_reward}, Accuracy: {epoch_accuracy}")
