@@ -16,7 +16,8 @@ import random
 import logging 
 
 from early_exit_resnet import *
-
+from dataset import CacheDataset
+import numpy as np
 
 class ReplayBuffer:
     def __init__(self, capacity):
@@ -168,28 +169,29 @@ class DQLAgent:
         self.target_model.load_state_dict(self.model.state_dict())
     
 class EarlyExitEnv(gym.Env):
-    def __init__(self, dataloader,models, num_classes=10):
+    def __init__(self, dataloader, num_classes=10):
         super(EarlyExitEnv, self).__init__()
         
         self.dataloader = dataloader
-        self.models = models
-        self.num_models = len(models)
-        self.num_exit = len(models)
+        # self.models = models
+        self.num_models = 4
+        self.num_exit = 4
         self.num_classes = num_classes
         self.max_steps = self.num_models
         self.iterator = iter(self.dataloader)
         
         # Image shape is determined by the first data point
         first_sample = next(self.iterator)
-        self.image_shape = first_sample[0].shape
-        # Action space: Decide to exit early or not
+        self.image_shape = first_sample['image'].shape
+        
+        # Action space: Decide to exit early (1) or not (0)
         self.action_space = spaces.Discrete(2)
         
         # Observation space: Logits from early exit and the image
         self.observation_space = spaces.Dict({
             'logits': spaces.Box(low=-np.inf, high=np.inf, shape=(self.num_classes,), dtype=np.float32),
-            'exit': spaces.Box(low=0, high=1, shape=(3,), dtype=np.float32),  # One-hot vector with 3 categories
-            'image': spaces.Box(low=0, high=1, shape=self.image_shape, dtype=np.float32),  # Values between 0 and 1 from ToTensor
+            'exit': spaces.Box(low=0, high=1, shape=(self.num_exit,), dtype=np.float32),  # One-hot vector with num_exit categories
+            'image': spaces.Box(low=-1.0, high=1.0, shape=self.image_shape, dtype=np.float32),  # Normalized image values
         })
         
         self.steps = 0
@@ -198,8 +200,8 @@ class EarlyExitEnv(gym.Env):
         self.logits = None
         self.label = None
         self.model_index = 0
-        self.feature = None
-
+        self.softmax = torch.nn.Softmax(dim=1)
+        
         # Set up logging
         logging.basicConfig(filename='early_exit_env.log', level=logging.INFO)
         logging.info('Environment initialized')
@@ -207,12 +209,13 @@ class EarlyExitEnv(gym.Env):
 
     def step(self, action):
         assert self.action_space.contains(action)
-        
+        self.logits = self.datum["logits"][self.model_index]
+        self.label = self.datum["label"]
         # Exit & Check Logits for accuracy
         if action == 1 or self.model_index == self.max_steps - 1:
-            pred_class = torch.argmax(self.logits).item()
-            accuracy = (pred_class == self.label)
-            
+            pred_class = int(self.softmax(self.logits).argmax(dim=1))
+            accuracy = 1 if (pred_class == self.label) else 0
+
             reward = 10 if accuracy else -10
 
             self.done = True
@@ -221,73 +224,120 @@ class EarlyExitEnv(gym.Env):
         
         # Continue and fetch logits from next block
         else:
-            self.logits = self._get_logits()
-            reward = - self.steps
+            reward = -self.steps
             accuracy = None
             logging.info(f'Step: {self.steps}, Model Index: {self.model_index}, Action: {action}, Continuing...')
 
-
-        return {'exit': self.exit[self.steps].clone(), 'logits': self.logits.clone().detach().numpy(), 'image': self.image.clone().numpy()}, reward, self.done, {'accuracy': accuracy}
+        self.steps += 1
+        
+        observation = {
+            'exit': self.exit[self.model_index].clone().detach(),
+            'logits': self.logits.clone().detach().numpy(),
+            'image': self.datum["image"].clone().numpy()
+        }
+        self.model_index += 1
+        return observation, reward, self.done, {'accuracy': accuracy}
 
     def reset(self):
         self.steps = 0
         self.done = False
-        self.image, self.label = self._get_next_data()
-        self.feature = self.image
+        self._get_next_data()
         self.model_index = 0
-        self.logits = self._get_logits()
+        self.logits = self.datum["logits"][self.model_index] # Get initial logits from the first model
+        self.feature = self.datum["image"]
         logging.info('Environment reset')
-        return {'exit': self.exit[self.steps].clone().detach(),'logits': self.logits.clone().detach().numpy(), 'image': self.image.clone().numpy()}
-
+        return {
+            'exit': self.exit[self.model_index].clone().detach(),
+            'logits': self.logits.clone().detach().numpy(),
+            'image': self.datum["image"].clone().numpy()
+        }
 
     def _get_next_data(self):
         try:
             data = next(self.iterator)
+            self.datum = data
         except StopIteration:
             self.iterator = iter(self.dataloader)
             data = next(self.iterator)
-        return data[0], data[1].item()
-    
-    def _get_logits(self):
-        out = self.models[self.model_index](self.feature)
-        if self.model_index < 3:
-            self.feature, self.logits = out[0], out[1]      
-        else:
-            self.logits = out
-        self.model_index += 1
-        return self.logits
-    
-    def render():
-        pass
+            self.datum = data
 
+    
+    # def _get_logits(self):
+    #     with torch.no_grad():
+    #         logits = self.models[self.model_index](self.feature)
+    #         if self.model_index == 0:
+    #             self.feature, self.logits = logits # Unpacking tuple (features, logits)
+    #         else:
+    #             self.logits = logits
+
+    #         self.model_index += 1
+    #     return self.logits
+    
+    def render(self):
+        pass
+        
+def evaluate_model(model, test_loader, device):
+    model.eval()  # Set model to evaluation mode
+    total_samples = len(test_loader.dataset)
+    correct = 0 # Assuming three exits
+
+    with torch.no_grad():  # No need to compute gradients
+        for inputs, labels in test_loader:
+            # print(inputs)
+            exit = model(inputs)[1]  # Forward pass
+            softmax = torch.nn.Softmax(dim=1)
+            exit_soft = softmax(exit)
+            predictions = exit_soft.argmax(dim=1)
+            print(predictions)
+            correct += 1 if (predictions == labels) else 0
+
+    accuracy = correct / total_samples
+    return accuracy
+    
 if __name__ == '__main__':
 
     transform = transforms.Compose([
         transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
     ])
-    test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True,transform=transform)
-    dataloader = DataLoader(test_set, batch_size=1, shuffle=True, num_workers=1)
+    
+    # test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True,transform=transform)
+    # dataloader = DataLoader(test_set, batch_size=1, shuffle=True, num_workers=1)
 
     # Instantiate models
-    block1 = HeadNetworkPart1(block=Bottleneck, in_planes=64, num_blocks=[3], num_classes=10)
-    block2 = HeadNetworkPart2(Bottleneck, 256, [4], num_classes=10)
-    block3 = HeadNetworkPart3(block=Bottleneck, in_planes=512, num_blocks=[6], num_classes=10)
-    block4 = TailNetwork(block=Bottleneck, in_planes=1024, num_blocks=[3, 4, 6, 3], num_classes=10)
+    # block1 = HeadNetworkPart1(block=Bottleneck, in_planes=64, num_blocks=[3], num_classes=10)
+    # block2 = HeadNetworkPart2(Bottleneck, 256, [4], num_classes=10)
+    # block3 = HeadNetworkPart3(block=Bottleneck, in_planes=512, num_blocks=[6], num_classes=10)
+    # block4 = TailNetwork(block=Bottleneck, in_planes=1024, num_blocks=[3], num_classes=10)
+    # # Load weights
+    # block1.load_state_dict(torch.load("models/cifar10/head1_resnet50.pth"))
+    # block2.load_state_dict(torch.load("models/cifar10/head2_resnet50.pth"))
+    # block3.load_state_dict(torch.load("models/cifar10/head3_resnet50.pth"))
+    # block4.load_state_dict(torch.load("models/cifar10/tail_resnet50.pth"))
 
-    # Load weights
-    block1.load_state_dict(torch.load("models/cifar10/head1_resnet50.pth"))
-    block2.load_state_dict(torch.load("models/cifar10/head2_resnet50.pth"))
-    block3.load_state_dict(torch.load("models/cifar10/head3_resnet50.pth"))
-    block4.load_state_dict(torch.load("models/cifar10/tail_resnet50.pth"))
+    # models = [block1, block2, block3, block4]
 
-    models = [block1, block2, block3, block4]
-
+    test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+    custom_test_set = CacheDataset(test_set, models=None,compute_logits=False)
+    dataloader = DataLoader(custom_test_set, batch_size=1, shuffle=True, num_workers=1)
+        
     # Create gym environment
-    env = EarlyExitEnv(dataloader=dataloader, models=models)
+    env = EarlyExitEnv(dataloader=dataloader)
 
     # Initialize DQL agent
     agent = DQLAgent(input_shape=env.image_shape, num_classes=env.num_classes,num_exit=(env.num_models))
 
+
+
+    # transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+    # ])
+    # test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True,transform=transform)
+    # dataloader = DataLoader(test_set, batch_size=1, shuffle=True, num_workers=1)
+
+    # accuracy = evaluate_model(block1,dataloader, 'cuda')
+    # print(accuracy)
 
     # Hyperparameters
     num_epochs = 100
@@ -307,6 +357,7 @@ if __name__ == '__main__':
             while not done:
                 action = agent.select_action(state['exit'], state['image'], state['logits'])
                 next_state, reward, done, info = env.step(action)
+                env.steps += 1
                 agent.store_experience((state, action, reward, next_state, done))
                 agent.update()
                 state = next_state
@@ -317,7 +368,7 @@ if __name__ == '__main__':
                 epoch_reward += reward
             if episode % target_update_freq == 0:
                 agent.update_target_model()
-
         epoch_accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0
         print(f"Epoch {epoch}, Reward: {epoch_reward}, Accuracy: {epoch_accuracy}")
         logging.info(f"Epoch {epoch}, Epoch Reward: {epoch_reward}, Accuracy: {epoch_accuracy}")
+ 

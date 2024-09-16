@@ -6,6 +6,7 @@ from torch.nn import Softmax
 from torchvision import transforms
 from PIL import Image
 import pytorch_lightning as pl
+from torchvision.datasets import CIFAR10
 
 class Flame2Data(Dataset):
     def __init__(self, image_dir, transform=None):
@@ -109,3 +110,110 @@ class Flame2DataModule(pl.LightningDataModule):
 
         accuracies = [correct / total_samples for correct in correct_predictions]
         return accuracies
+
+class CIFAR10DataModule(pl.LightningDataModule):
+    def __init__(self, data_dir='./data', batch_size=32):
+        super().__init__()
+        self.data_dir = data_dir
+        self.batch_size = batch_size
+
+    def prepare_data(self):
+        # Download CIFAR10 dataset
+        CIFAR10(root=self.data_dir, train=True, download=True)
+        CIFAR10(root=self.data_dir, train=False, download=True)
+
+    def setup(self, stage=None):
+        # Transform data
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+        ])
+
+        # Split the data
+        if stage == 'fit' or stage is None:
+            cifar10_full = CIFAR10(root=self.data_dir, train=True, transform=transform)
+            self.cifar10_train, self.cifar10_val = random_split(cifar10_full, [45000, 5000])
+
+        if stage == 'test' or stage is None:
+            self.cifar10_test = CIFAR10(root=self.data_dir, train=False, transform=transform)
+
+    def train_dataloader(self):
+        return DataLoader(self.cifar10_train, batch_size=self.batch_size, shuffle=True, num_workers=4)
+
+    def val_dataloader(self):
+        return DataLoader(self.cifar10_val, batch_size=self.batch_size, shuffle=False, num_workers=4)
+
+    def test_dataloader(self):
+        return DataLoader(self.cifar10_test, batch_size=self.batch_size, shuffle=False, num_workers=4)
+
+
+class CacheDataset(Dataset):
+    def __init__(self, base_dataset, cached_data_file='cached_logits.pkl', models=None, compute_logits=False):
+        if base_dataset != None:
+            self.base_dataset = base_dataset
+        self.cached_data_file = cached_data_file
+        self.models = models
+        if not compute_logits and os.path.exists(self.cached_data_file):
+            with open(self.cached_data_file, 'rb') as f:
+                self.cached_data = pickle.load(f)
+                self.base_dataset =  self.cached_data
+        else:
+            if compute_logits and models:
+                print("Computing and saving logits...")
+                self.cached_data = self.compute_and_cache_logits()
+            else:
+                raise ValueError("Compute logits is set to true but no models provided or cached data file not found.")
+
+    def __len__(self):
+        return len(self.base_dataset)
+    
+    def __getitem__(self, idx):
+        image, label = self.base_dataset[idx]
+        data = self.cached_data[idx]
+        logits = data['logits']
+        exit_number = data['exit_number']
+        
+        return {
+            'image': image,
+            'exit_number': exit_number,
+            'logits': logits,
+            'label': label
+        }
+
+    def compute_and_cache_logits(self):
+        cache = []
+        for idx in range(len(self.base_dataset)):
+            image, label = self.base_dataset[idx]
+            
+            x = image.unsqueeze(0) # unsqueeze to add batch dimension
+            features, logit1 = self.models['block1'](x)
+            features, logit2 = self.models['block2'](features)
+            features, logit3 = self.models['block3'](features)
+            logit4 = self.models['block4'](features)
+            
+            logit1 = logit1.detach().squeeze(0)
+            logit2 = logit2.detach().squeeze(0)
+            logit3 = logit3.detach().squeeze(0)
+            logit4 = logit4.detach().squeeze(0)
+            
+            # Choose one exit randomly for demonstration
+            exit_number = torch.randint(1, 5, (1,)).item()
+            if exit_number == 1:
+                logits = logit1
+            elif exit_number == 2:
+                logits = logit2
+            elif exit_number == 3:
+                logits = logit3
+            else:
+                logits = logit4
+
+            cache.append({
+                'logits': logits,
+                'exit_number': exit_number
+            })
+
+        with open(self.cached_data_file, 'wb') as f:
+            pickle.dump(cache, f)
+
+        return cache
+
