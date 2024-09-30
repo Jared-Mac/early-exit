@@ -8,6 +8,9 @@ import simpy
 from ns.packet.packet import Packet
 from collections import defaultdict as dd
 import time
+# import ee_gym as ee_gym
+import dql_agent as dql_agent
+import numpy as np
 
 class Item:
     def __init__(self, logit, label, yhat, elapsed,exit_num):
@@ -19,7 +22,7 @@ class Item:
     def __str__(self):
         return f"logit:{self.logit},yhat:{self.yhat},label:{self.elapsed},logit:{self.elapsed},exit:{self.exit_num}"
 class Camera:
-    def __init__(self, env, test_loader, interval=1,out=None):
+    def __init__(self, env, test_loader, interval=1,out=None, agent_store=None):
         """
         Initialize the Camera class.
 
@@ -35,7 +38,7 @@ class Camera:
         self.out = out
         self.interval = interval
         self.test_loader = test_loader
-        
+        self.agent_store = agent_store
         self.env.process(self.run())
     def run(self):
         """
@@ -43,12 +46,14 @@ class Camera:
         if required, but here it will just return a placeholder.
         """
         while True:
-            for image, label in self.test_loader:
-                self.out.put((image,label.numpy()[0]))
-                yield self.env.timeout(self.interval)
+            # for image, label in self.test_loader:
+            #     self.out.put((image,label.numpy()[0]))
+            self.agent_store.put(np.random.randint(0,100))
+            yield self.env.timeout(self.interval)
+    
 
 class Head:
-    def __init__(self, env, model1, model2, model1_time, model2_time,conf1,conf2,data, device="cuda", out = None):
+    def __init__(self, env, model1, model2, model1_time, model2_time,conf1,conf2,data,trainer_store, device="cuda", out = None):
         self.store = simpy.Store(env)        
         self.env = env
         self.model1 = model1
@@ -61,6 +66,7 @@ class Head:
         self.action = env.process(self.run())
         self.conf1 = conf1
         self.conf2 = conf2
+        self.trainer_store = trainer_store
 
     def predict(self, model, images):
         with torch.no_grad():
@@ -77,23 +83,22 @@ class Head:
             image,label = yield self.store.get()
             init_time = self.env.now
 
+            # Add loop for each exit
+            # Inference on exit 1
             output, prediction = self.predict(self.model1, image)
             yield self.env.timeout(self.model1_time())
 
             logit, yhat = prediction
             logit, yhat = logit.cpu().numpy()[0], yhat.cpu().numpy()[0]
+            
+            # Policy Agent
             if logit >= self.conf1:
-                self.data.append(Item(logit,label,yhat,(self.env.now-init_time),0))
+                item = Item(logit,label,yhat,(self.env.now-init_time),1)
+                self.data.append(item)
+                self.trainer_store.put(item)
                 continue
 
-            output, prediction = self.predict(self.model2, output)
-            yield self.env.timeout(self.model2_time())
-            logit, yhat = prediction
-            logit, yhat = logit.cpu().numpy()[0], yhat.cpu().numpy()[0]
-            if logit >= self.conf2:
-                self.data.append(Item(logit,label,yhat,(self.env.now-init_time),1))
-                continue
-            
+
             # Create a Packet instance
             packet = Packet(
                 time=init_time,
@@ -127,7 +132,6 @@ class Tail:
             predictions = self.model(input.to(self.device))
             m = torch.nn.Softmax(dim=1)
             predictions = m(predictions)
-            # predicted = torch.max(predictions, 1)
             return predictions.argmax(dim=1)
 
     def run(self):
@@ -147,4 +151,28 @@ class Tail:
     def put(self, packet):
         self.store.put(packet)
 
+class Agent:
+    def __init__(self, env, agent, model, optimizer, criterion, device="cuda"):
+        self.store = simpy.Store(env)
+        self.env = env
+        if agent == 'dql':
+            state_dim = 1
+            action_dim = 2
+            self.agent = dql_agent.DQLAgent(state_dim,action_dim)
+        # self.gym = ee_gym.EarlyExitGym(env)
+        self.action = env.process(self.learn())
+    def learn(self):
+        while True:
+            # Wait for data item
+            item = yield self.store.get()
+            print(item)
+            obs, reward, done, info = self.gym.step(item)
 
+            # Add to memory store, Train Agent
+            # agent.replay_buffer.push(obs, action, reward, next_obs, done)
+            # agent.train()
+    def action(self, state):
+        return self.agent.select_action(state)
+
+if __name__ == "__main__":
+    trainer = Agent(None,None,None,None,None)
