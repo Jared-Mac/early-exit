@@ -133,7 +133,7 @@ class TailNetwork(pl.LightningModule):
 class EarlyExitResNet50(pl.LightningModule):
     def __init__(self, num_classes=10):
         super(EarlyExitResNet50, self).__init__()
-        self.example_input_array = torch.rand(1, 3, 254, 254)
+        self.example_input_array = torch.rand(1, 3, 32, 32)
         self.head1 = HeadNetworkPart1(Bottleneck, 64, [3], num_classes)
         self.head2 = HeadNetworkPart2(Bottleneck, 256, [4], num_classes)
         self.head3 = HeadNetworkPart3(Bottleneck, 512, [6], num_classes)
@@ -142,7 +142,7 @@ class EarlyExitResNet50(pl.LightningModule):
         self.accuracy2 = torchmetrics.Accuracy(num_classes=num_classes,task="multiclass")
         self.accuracy3 = torchmetrics.Accuracy(num_classes=num_classes,task="multiclass")
         self.accuracyfinal = torchmetrics.Accuracy(num_classes=num_classes,task="multiclass")
-        
+
         self.test_step_outputs = []
         self.save_hyperparameters()
     def forward(self, x):
