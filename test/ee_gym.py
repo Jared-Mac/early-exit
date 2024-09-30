@@ -72,26 +72,6 @@ class DQNet(nn.Module):
         actions = self.fc4(combined)
 
         return actions
-    # def __init__(self, input_shape, num_classes):
-    #     super(DQNet, self).__init__()
-    #     self.input_shape = input_shape
-    #     self.conv1 = nn.Conv2d(input_shape[0], 32, kernel_size=3, stride=1, padding=1)
-    #     self.relu = nn.ReLU()
-    #     self.fc1 = nn.Linear(32 * input_shape[0], 128)
-    #     self.fc2 = nn.Linear(32 * 3 * 128 + num_classes , 2)  # Two actions: 0 or 1
-
-
-    # def forward(self, x, logits):
-    #     x = self.relu(self.conv1(x))
-    #     # x = x.reshape(x.size(0), -1)  # Flatten
-    #     x = self.relu(self.fc1(x))
-    #     x = x.reshape(x.size(0),-1)  # Flatten
-    #     logits = logits.reshape(x.size(0),-1)  # Flatten
-
-    #     combined = torch.cat((x, logits), dim=1)  # Concatenate along the feature dimension
-    #     x = self.fc2(combined)
-    #     return x
-    
 class DQLAgent:
     def __init__(self, input_shape, num_classes, num_exit, memory_size=10000, batch_size=64, gamma=0.99, lr=1e-3, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.995):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

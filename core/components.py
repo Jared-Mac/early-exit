@@ -8,7 +8,7 @@ import simpy
 from ns.packet.packet import Packet
 from collections import defaultdict as dd
 import time
-import ee_gym as ee_gym
+# import ee_gym as ee_gym
 import dql_agent as dql_agent
 import numpy as np
 
@@ -159,7 +159,7 @@ class Agent:
             state_dim = 1
             action_dim = 2
             self.agent = dql_agent.DQLAgent(state_dim,action_dim)
-        self.gym = ee_gym.EarlyExitGym(env)
+        # self.gym = ee_gym.EarlyExitGym(env)
         self.action = env.process(self.learn())
     def learn(self):
         while True:
