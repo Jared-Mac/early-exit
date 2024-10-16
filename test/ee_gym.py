@@ -303,7 +303,7 @@ if __name__ == '__main__':
         
     # Create gym environment
     env = EarlyExitEnv(dataloader=dataloader)
-
+    print(env.image_shape)
     # Initialize DQL agent
     agent = DQLAgent(input_shape=env.image_shape, num_classes=env.num_classes,num_exit=(env.num_models))
 
