@@ -137,11 +137,11 @@ class DQLAgent:
         self.target_model.load_state_dict(self.model.state_dict())
     
 class SimpyAgent:
-    def __init__(self, env, rl_agent, update_frequency=5):
+    def __init__(self, env, rl_agent, update_frequency=5, timeout=1):
         self.env = env
         self.rl_agent = rl_agent
         self.update_frequency = update_frequency
-        
+        self.timeout = timeout
         # Start the training process
         self.env.process(self.train())
 
@@ -159,7 +159,7 @@ class SimpyAgent:
             if iteration % self.update_frequency == 0:
                 self.rl_agent.update_target_model()
             iteration += 1
-            yield self.env.timeout(1)  # Adjust timeout as per your requirement
+            yield self.env.timeout(self.timeout)  
 
 if __name__ == "__main__":
     print("here")

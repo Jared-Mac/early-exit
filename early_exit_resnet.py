@@ -182,7 +182,10 @@ class EarlyExitResNet50(pl.LightningModule):
         ce_loss2 = F.cross_entropy(ee2_out, targets)
         ce_loss3 = F.cross_entropy(ee3_out, targets)
         ce_loss_final = F.cross_entropy(final_out, targets)
-        loss = ce_loss1 + ce_loss2 + ce_loss3 + ce_loss_final
+        # loss = ce_loss1 + ce_loss2 + ce_loss3 + ce_loss_final
+        loss = 0.25 * ce_loss1 + 0.25*ce_loss2 + 0.25*ce_loss3 + 0.25*ce_loss_final
+        # loss = ce_loss_final
+
         self.log('test_loss', loss.item())
 
         self.test_step_outputs.append(loss)
