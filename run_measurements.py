@@ -2,6 +2,9 @@ from early_exit_resnet import *
 from torch.utils.data import DataLoader
 import torchvision
 import torchvision.transforms as transforms
+import torch
+
+device = torch.device("cpu")
 
 block1 = HeadNetworkPart1(block=Bottleneck, in_planes=64, num_blocks=[3], num_classes=10)
 block2 = HeadNetworkPart2(Bottleneck, 256, [4], num_classes=10)
@@ -15,10 +18,10 @@ block2_state_dict = {}
 block3_state_dict = {}
 block4_state_dict = {}
 
-block1.load_state_dict(torch.load("models/cifar10/block1.pth"))
-block2.load_state_dict(torch.load("models/cifar10/block2.pth"))
-block3.load_state_dict(torch.load("models/cifar10/block3.pth"))
-block4.load_state_dict(torch.load("models/cifar10/block4.pth"))
+block1.load_state_dict(torch.load("models/cifar10/block1.pth", map_location=device))
+block2.load_state_dict(torch.load("models/cifar10/block2.pth", map_location=device))
+block3.load_state_dict(torch.load("models/cifar10/block3.pth", map_location=device))
+block4.load_state_dict(torch.load("models/cifar10/block4.pth", map_location=device))
 
 model.head1 = block1
 model.head2 = block2
