@@ -11,21 +11,22 @@ block2 = HeadNetworkPart2(Bottleneck, 256, [4], num_classes=10)
 block3 = HeadNetworkPart3(block=Bottleneck, in_planes=512, num_blocks=[6], num_classes=10)
 block4 = TailNetwork(block=Bottleneck, in_planes=1024, num_blocks=[3, 4, 6, 3], num_classes=10)
 
-model = EarlyExitResNet50(num_classes=3)
+# model = EarlyExitResNet50(num_classes=3)
+model = EarlyExitResNet50OneBlock(num_classes=3)
 
 block1_state_dict = {}
-block2_state_dict = {}
-block3_state_dict = {}
+# block2_state_dict = {}
+# block3_state_dict = {}
 block4_state_dict = {}
 
 block1.load_state_dict(torch.load("models/cifar10/block1.pth", map_location=device))
-block2.load_state_dict(torch.load("models/cifar10/block2.pth", map_location=device))
-block3.load_state_dict(torch.load("models/cifar10/block3.pth", map_location=device))
+# block2.load_state_dict(torch.load("models/cifar10/block2.pth", map_location=device))
+# block3.load_state_dict(torch.load("models/cifar10/block3.pth", map_location=device))
 block4.load_state_dict(torch.load("models/cifar10/block4.pth", map_location=device))
 
 model.head1 = block1
-model.head2 = block2
-model.head3 = block3
+# model.head2 = block2
+# model.head3 = block3
 model.tail = block4
 
 def evaluate_model(model, test_loader, device):
