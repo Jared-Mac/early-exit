@@ -45,11 +45,11 @@ class EarlyExitBlock(pl.LightningModule):
     def forward(self, x):
         return self.classifier(x)
 
-class HeadNetworkPart1(pl.LightningModule):
-    def __init__(self, block, in_planes, num_blocks, num_classes=10):
-        super(HeadNetworkPart1, self).__init__()
+class Block1(pl.LightningModule):
+    def __init__(self, block, in_planes, num_blocks, num_classes=10, input_channels=3):
+        super(Block1, self).__init__()
         self.in_planes = in_planes
-        self.conv1 = nn.Conv2d(3, in_planes, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(input_channels, in_planes, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(in_planes)
         self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
         self.early_exit_1 = EarlyExitBlock(64 * block.expansion, num_classes)
@@ -68,9 +68,9 @@ class HeadNetworkPart1(pl.LightningModule):
         ee1_out = self.early_exit_1(out)
         return out, ee1_out
 
-class HeadNetworkPart2(pl.LightningModule):
+class Block2(pl.LightningModule):
     def __init__(self, block, in_planes, num_blocks, num_classes=10):
-        super(HeadNetworkPart2, self).__init__()
+        super(Block2, self).__init__()
         self.in_planes = in_planes
         self.layer2 = self._make_layer(block, 128, num_blocks[0], stride=2)
         self.early_exit_2 = EarlyExitBlock(128 * block.expansion, num_classes)
@@ -88,9 +88,9 @@ class HeadNetworkPart2(pl.LightningModule):
         ee2_out = self.early_exit_2(out)
         return out, ee2_out
 
-class HeadNetworkPart3(pl.LightningModule):
+class Block3(pl.LightningModule):
     def __init__(self, block, in_planes, num_blocks, num_classes=10):
-        super(HeadNetworkPart3, self).__init__()
+        super(Block3, self).__init__()
         self.in_planes = in_planes
         self.layer3 = self._make_layer(block, 256, num_blocks[0], stride=2)
         self.early_exit_3 = EarlyExitBlock(256 * block.expansion, num_classes)
@@ -108,9 +108,9 @@ class HeadNetworkPart3(pl.LightningModule):
         ee3_out = self.early_exit_3(out)
         return out, ee3_out
 
-class TailNetwork(pl.LightningModule):
+class Block4(pl.LightningModule):
     def __init__(self, block, in_planes, num_blocks, num_classes=10):
-        super(TailNetwork, self).__init__()
+        super(Block4, self).__init__()
         self.in_planes = in_planes
         self.layer4 = self._make_layer(block, 512, num_blocks[0], stride=2)
         self.linear = nn.Linear(512 * block.expansion, num_classes)
@@ -131,25 +131,27 @@ class TailNetwork(pl.LightningModule):
         return final_out
 
 class EarlyExitResNet50(pl.LightningModule):
-    def __init__(self, num_classes=10):
+    def __init__(self, num_classes=10, input_channels=3, input_height=32, input_width=32, loss_weights=[0.25, 0.25, 0.25, 0.25]):
         super(EarlyExitResNet50, self).__init__()
-        self.example_input_array = torch.rand(1, 3, 32, 32)
-        self.head1 = HeadNetworkPart1(Bottleneck, 64, [3], num_classes)
-        self.head2 = HeadNetworkPart2(Bottleneck, 256, [4], num_classes)
-        self.head3 = HeadNetworkPart3(Bottleneck, 512, [6], num_classes)
-        self.tail = TailNetwork(Bottleneck, 1024, [3], num_classes)
-        self.accuracy1 = torchmetrics.Accuracy(num_classes=num_classes,task="multiclass")
-        self.accuracy2 = torchmetrics.Accuracy(num_classes=num_classes,task="multiclass")
-        self.accuracy3 = torchmetrics.Accuracy(num_classes=num_classes,task="multiclass")
-        self.accuracyfinal = torchmetrics.Accuracy(num_classes=num_classes,task="multiclass")
-
+        self.example_input_array = torch.rand(1, input_channels, input_height, input_width)
+        self.block1 = Block1(Bottleneck, 64, [3], num_classes, input_channels)
+        self.block2 = Block2(Bottleneck, 256, [4], num_classes)
+        self.block3 = Block3(Bottleneck, 512, [6], num_classes)
+        self.block4 = Block4(Bottleneck, 1024, [3], num_classes)
+        self.accuracy1 = torchmetrics.Accuracy(num_classes=num_classes, task="multiclass")
+        self.accuracy2 = torchmetrics.Accuracy(num_classes=num_classes, task="multiclass")
+        self.accuracy3 = torchmetrics.Accuracy(num_classes=num_classes, task="multiclass")
+        self.accuracyfinal = torchmetrics.Accuracy(num_classes=num_classes, task="multiclass")
+        
+        self.loss_weights = loss_weights
         self.test_step_outputs = []
         self.save_hyperparameters()
+
     def forward(self, x):
-        out, ee1_out = self.head1(x)
-        out, ee2_out = self.head2(out)
-        out, ee3_out = self.head3(out)
-        final_out = self.tail(out)
+        out, ee1_out = self.block1(x)
+        out, ee2_out = self.block2(out)
+        out, ee3_out = self.block3(out)
+        final_out = self.block4(out)
         return ee1_out, ee2_out, ee3_out, final_out
 
     def training_step(self, batch, batch_idx):
@@ -159,7 +161,10 @@ class EarlyExitResNet50(pl.LightningModule):
         ce_loss2 = F.cross_entropy(ee2_out, targets)
         ce_loss3 = F.cross_entropy(ee3_out, targets)
         ce_loss_final = F.cross_entropy(final_out, targets)
-        loss = ce_loss1 + ce_loss2 + ce_loss3 + ce_loss_final
+        loss = (self.loss_weights[0] * ce_loss1 + 
+                self.loss_weights[1] * ce_loss2 + 
+                self.loss_weights[2] * ce_loss3 + 
+                self.loss_weights[3] * ce_loss_final)
         self.log('train_loss', loss.item())
         return loss
 
@@ -170,10 +175,12 @@ class EarlyExitResNet50(pl.LightningModule):
         ce_loss2 = F.cross_entropy(ee2_out, targets)
         ce_loss3 = F.cross_entropy(ee3_out, targets)
         ce_loss_final = F.cross_entropy(final_out, targets)
-        loss = ce_loss1 + ce_loss2 + ce_loss3 + ce_loss_final
+        loss = (self.loss_weights[0] * ce_loss1 + 
+                self.loss_weights[1] * ce_loss2 + 
+                self.loss_weights[2] * ce_loss3 + 
+                self.loss_weights[3] * ce_loss_final)
         self.log('val_loss', loss.item())
         return loss
-    
     
     def test_step(self, batch, batch_idx):
         inputs, targets = batch
@@ -182,10 +189,10 @@ class EarlyExitResNet50(pl.LightningModule):
         ce_loss2 = F.cross_entropy(ee2_out, targets)
         ce_loss3 = F.cross_entropy(ee3_out, targets)
         ce_loss_final = F.cross_entropy(final_out, targets)
-        # loss = ce_loss1 + ce_loss2 + ce_loss3 + ce_loss_final
-        loss = 0.25 * ce_loss1 + 0.25*ce_loss2 + 0.25*ce_loss3 + 0.25*ce_loss_final
-        # loss = ce_loss_final
-
+        loss = (self.loss_weights[0] * ce_loss1 + 
+                self.loss_weights[1] * ce_loss2 + 
+                self.loss_weights[2] * ce_loss3 + 
+                self.loss_weights[3] * ce_loss_final)
         self.log('test_loss', loss.item())
 
         self.test_step_outputs.append(loss)

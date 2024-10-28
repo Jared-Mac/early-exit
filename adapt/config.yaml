@@ -1,0 +1,94 @@
+# Packet sizes in bytes
+packet_sizes:
+  IMAGE: 3072  # 32*32*3
+  block0: 262144  # 256*32*32
+  block1: 131072  # 512*16*16
+  block2: 65536  # 1024*8*8
+  block3: 65536  # 1024*8*8
+
+# Block processing times in seconds
+block_processing_times:
+  mobilenetv2:
+    block0: 0.005
+    block1: 0.015
+    block2: 0.025
+    block3: 0.035
+  resnet18:
+    block0: 0.01
+    block1: 0.03
+    block2: 0.05
+    block3: 0.07
+  resnet50:
+    block0: 0.02
+    block1: 0.06
+    block2: 0.10
+    block3: 0.14
+
+# Block CPU FLOPS (floating-point operations per second)
+block_cpu_flops:
+  mobilenetv2:
+    block0: 100000000  # 0.1 GFLOPs
+    block1: 300000000  # 0.3 GFLOPs
+    block2: 500000000  # 0.5 GFLOPs
+    block3: 700000000  # 0.7 GFLOPs
+  resnet18:
+    block0: 200000000  # 0.2 GFLOPs
+    block1: 600000000  # 0.6 GFLOPs
+    block2: 1000000000  # 1.0 GFLOPs
+    block3: 1400000000  # 1.4 GFLOPs
+  resnet50:
+    block0: 400000000  # 0.4 GFLOPs
+    block1: 1200000000  # 1.2 GFLOPs
+    block2: 2000000000  # 2.0 GFLOPs
+    block3: 2800000000  # 2.8 GFLOPs
+
+# Agent time in seconds
+agent_time: 0.001
+
+# Current draw in mA for each operation
+current_draw:
+  mobilenetv2:
+    processing: 40  # mA for processing
+    transmission: 90  # mA for transmission
+  resnet18:
+    processing: 50  # mA for processing
+    transmission: 100  # mA for transmission
+  resnet50:
+    processing: 60  # mA for processing
+    transmission: 110  # mA for transmission
+  idle: 1  # mA for idle state
+
+# Battery parameters
+battery:
+  initial_charge: 2000  # mAh
+  capacity: 2000  # mAh
+  discharge_rate: 0.05  # mA per hour when idle
+  voltage: 3.7  # Volts (typical for Li-ion batteries)
+
+# Simulation parameters
+simulation:
+  max_sim_time: 50000
+  stability_window: 2000
+  stability_threshold: 0.03
+  evaluation_time: 1000
+
+# DQL Agent parameters
+dql_agent:
+  memory_size: 100000
+  batch_size: 64
+  gamma: 0.99
+  learning_rate: 0.001
+  epsilon_start: 1.0
+  epsilon_end: 0.01
+  epsilon_decay: 0.995
+  update_frequency: 10
+
+# Early Exit parameters
+early_exit:
+  confidence_threshold: 0.8
+
+# Model selection
+model: "resnet18"  # Options: "mobilenetv2", "resnet18", "resnet50"
+
+# Dataset selection
+dataset: "cifar10"  # Options: "cifar10", "cifar100", "flame2"
