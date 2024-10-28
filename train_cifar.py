@@ -15,11 +15,11 @@ from early_exit_mobilenetv2 import EarlyExitMobileNetV2
 torch.set_float32_matmul_precision('medium')
 
 
-cifar10_dm = CIFAR10DataModule(batch_size=350)
+cifar10_dm = CIFAR10DataModule(batch_size=64)
 # cifar10_dm = CIFAR100DataModule(batch_size=350)
 
 # Initialize the model
-model = EarlyExitMobileNetV2(num_classes=10, input_channels=3, input_height=32, input_width=32, loss_weights=[0.25, 0.25, 0.25, 0.25])
+model = EarlyExitResNet50(num_classes=10, input_channels=3, input_height=32, input_width=32, loss_weights=[0.25, 0.25, 0.25, 0.25])
 
 # Set up PyTorch Lightning Trainer
 # ModelSummary(max_depth=2)
