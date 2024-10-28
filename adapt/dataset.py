@@ -1,13 +1,14 @@
 import os
 import re
 import torch
-from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data import Dataset, DataLoader, random_split, Subset
 from torch.nn import Softmax
 from torchvision import transforms
 from PIL import Image
 import pytorch_lightning as pl
 from torchvision.datasets import CIFAR10, CIFAR100
 import pickle
+from sklearn.model_selection import train_test_split
 
 class Flame2Data(Dataset):
     def __init__(self, image_dir, transform=None):
@@ -69,17 +70,30 @@ class Flame2DataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         full_dataset = Flame2Data(self.image_dir, self.transform)
-
-        # Set random seed for reproducibility
-        torch.manual_seed(self.seed)
-        # Calculate split lengths
-        total_size = len(full_dataset)
-        train_size = int(self.train_val_test_split[0] * total_size)
-        val_size = int(self.train_val_test_split[1] * total_size)
-        test_size = total_size - train_size - val_size
-
-        # Split dataset
-        self.train_dataset, self.val_dataset, self.test_dataset = random_split(full_dataset, [train_size, val_size, test_size])
+        
+        # Get all labels
+        all_labels = [full_dataset[i][1].item() for i in range(len(full_dataset))]
+        
+        # Perform stratified split
+        train_indices, temp_indices = train_test_split(
+            range(len(full_dataset)),
+            test_size=self.train_val_test_split[1] + self.train_val_test_split[2],
+            stratify=all_labels,
+            random_state=self.seed
+        )
+        
+        # Split the remaining indices into validation and test sets
+        val_indices, test_indices = train_test_split(
+            temp_indices,
+            test_size=self.train_val_test_split[2] / (self.train_val_test_split[1] + self.train_val_test_split[2]),
+            stratify=[all_labels[i] for i in temp_indices],
+            random_state=self.seed
+        )
+        
+        # Create subset datasets
+        self.train_dataset = torch.utils.data.Subset(full_dataset, train_indices)
+        self.val_dataset = torch.utils.data.Subset(full_dataset, val_indices)
+        self.test_dataset = torch.utils.data.Subset(full_dataset, test_indices)
     
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, pin_memory=True, num_workers=8)
@@ -181,6 +195,44 @@ class CIFAR100DataModule(pl.LightningDataModule):
 
     def test_dataloader(self):
         return DataLoader(self.cifar100_test, batch_size=self.batch_size, shuffle=False, num_workers=1)
+
+class ImageNet1kDataModule(pl.LightningDataModule):
+    def __init__(self, data_dir='./data/imagenet-1k', batch_size=32):
+        super().__init__()
+        self.data_dir = data_dir
+        self.batch_size = batch_size
+
+    def prepare_data(self):
+        # ImageNet-1k dataset is typically not automatically downloaded due to its size
+        # Ensure the dataset is manually downloaded and placed in the specified directory
+        pass
+
+    def setup(self, stage=None):
+        # Define transforms
+        transform = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+        # Split the data
+        if stage == 'fit' or stage is None:
+            self.imagenet1k_train = ImageFolder(root=os.path.join(self.data_dir, 'train'), transform=transform)
+            self.imagenet1k_val = ImageFolder(root=os.path.join(self.data_dir, 'val'), transform=transform)
+
+        if stage == 'test' or stage is None:
+            self.imagenet1k_test = ImageFolder(root=os.path.join(self.data_dir, 'val'), transform=transform)
+
+    def train_dataloader(self):
+        return DataLoader(self.imagenet1k_train, batch_size=self.batch_size, shuffle=True, num_workers=4)
+
+    def val_dataloader(self):
+        return DataLoader(self.imagenet1k_val, batch_size=self.batch_size, shuffle=False, num_workers=4)
+
+    def test_dataloader(self):
+        return DataLoader(self.imagenet1k_test, batch_size=self.batch_size, shuffle=False, num_workers=4)
+
 
 class CacheDataset(Dataset):
     def __init__(self, base_dataset=None, cached_data_file='data/cached_logits.pkl', models=None, compute_logits=False):
