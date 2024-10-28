@@ -3,18 +3,15 @@ import torchmetrics
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
-from pytorch_lightning import Trainer
 
-class Bottleneck(pl.LightningModule):
-    expansion = 4
+class BasicBlock(pl.LightningModule):
+    expansion = 1
     def __init__(self, in_planes, planes, stride=1):
-        super(Bottleneck, self).__init__()
-        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
+        super(BasicBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = nn.Conv2d(planes, planes * self.expansion, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes * self.expansion)
 
         self.shortcut = nn.Sequential()
         if stride != 1 or in_planes != self.expansion * planes:
@@ -25,8 +22,7 @@ class Bottleneck(pl.LightningModule):
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
-        out = F.relu(self.bn2(self.conv2(out)))
-        out = self.bn3(self.conv3(out))
+        out = self.bn2(self.conv2(out))
         out += self.shortcut(x)
         out = F.relu(out)
         return out
@@ -84,7 +80,7 @@ class Block2(pl.LightningModule):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = self.layer2(x)
+        out = self.layer2(x)  # Changed 'out' to 'x' here
         ee2_out = self.early_exit_2(out)
         return out, ee2_out
 
@@ -104,7 +100,7 @@ class Block3(pl.LightningModule):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = self.layer3(x)
+        out = self.layer3(x)  # Changed 'out' to 'x' here
         ee3_out = self.early_exit_3(out)
         return out, ee3_out
 
@@ -130,14 +126,14 @@ class Block4(pl.LightningModule):
         final_out = self.linear(out)
         return final_out
 
-class EarlyExitResNet50(pl.LightningModule):
+class EarlyExitResNet18(pl.LightningModule):
     def __init__(self, num_classes=10, input_channels=3, input_height=32, input_width=32, loss_weights=[0.25, 0.25, 0.25, 0.25]):
-        super(EarlyExitResNet50, self).__init__()
+        super(EarlyExitResNet18, self).__init__()
         self.example_input_array = torch.rand(1, input_channels, input_height, input_width)
-        self.block1 = Block1(Bottleneck, 64, [3], num_classes, input_channels)
-        self.block2 = Block2(Bottleneck, 256, [4], num_classes)
-        self.block3 = Block3(Bottleneck, 512, [6], num_classes)
-        self.block4 = Block4(Bottleneck, 1024, [3], num_classes)
+        self.block1 = Block1(BasicBlock, 64, [2], num_classes, input_channels)
+        self.block2 = Block2(BasicBlock, 64, [2], num_classes)
+        self.block3 = Block3(BasicBlock, 128, [2], num_classes)
+        self.block4 = Block4(BasicBlock, 256, [2], num_classes)
         self.accuracy1 = torchmetrics.Accuracy(num_classes=num_classes, task="multiclass")
         self.accuracy2 = torchmetrics.Accuracy(num_classes=num_classes, task="multiclass")
         self.accuracy3 = torchmetrics.Accuracy(num_classes=num_classes, task="multiclass")
@@ -217,5 +213,6 @@ class EarlyExitResNet50(pl.LightningModule):
         epoch_average = torch.stack(self.test_step_outputs).mean()
         self.log("test_epoch_average", epoch_average)
         self.test_step_outputs.clear()  # free memory
+
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=0.001)

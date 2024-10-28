@@ -3,33 +3,35 @@ import torchmetrics
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
-from pytorch_lightning import Trainer
 
-class Bottleneck(pl.LightningModule):
-    expansion = 4
-    def __init__(self, in_planes, planes, stride=1):
-        super(Bottleneck, self).__init__()
-        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = nn.Conv2d(planes, planes * self.expansion, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes * self.expansion)
+class InvertedResidual(pl.LightningModule):
+    def __init__(self, inp, oup, stride, expand_ratio):
+        super(InvertedResidual, self).__init__()
+        self.stride = stride
+        assert stride in [1, 2]
 
-        self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != self.expansion * planes:
-            self.shortcut = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(self.expansion * planes)
-            )
+        hidden_dim = int(round(inp * expand_ratio))
+        self.use_res_connect = self.stride == 1 and inp == oup
+
+        layers = []
+        if expand_ratio != 1:
+            layers.append(nn.Conv2d(inp, hidden_dim, 1, 1, 0, bias=False))
+            layers.append(nn.BatchNorm2d(hidden_dim))
+            layers.append(nn.ReLU6(inplace=True))
+        layers.extend([
+            nn.Conv2d(hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim, bias=False),
+            nn.BatchNorm2d(hidden_dim),
+            nn.ReLU6(inplace=True),
+            nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(oup),
+        ])
+        self.conv = nn.Sequential(*layers)
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = F.relu(self.bn2(self.conv2(out)))
-        out = self.bn3(self.conv3(out))
-        out += self.shortcut(x)
-        out = F.relu(out)
-        return out
+        if self.use_res_connect:
+            return x + self.conv(x)
+        else:
+            return self.conv(x)
 
 class EarlyExitBlock(pl.LightningModule):
     def __init__(self, in_planes, num_classes):
@@ -38,7 +40,7 @@ class EarlyExitBlock(pl.LightningModule):
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten(),
             nn.Linear(in_planes, 64),
-            nn.ReLU(),
+            nn.ReLU6(inplace=True),
             nn.Linear(64, num_classes)
         )
 
@@ -46,98 +48,81 @@ class EarlyExitBlock(pl.LightningModule):
         return self.classifier(x)
 
 class Block1(pl.LightningModule):
-    def __init__(self, block, in_planes, num_blocks, num_classes=10, input_channels=3):
+    def __init__(self, num_classes=10, input_channels=3):
         super(Block1, self).__init__()
-        self.in_planes = in_planes
-        self.conv1 = nn.Conv2d(input_channels, in_planes, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(in_planes)
-        self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
-        self.early_exit_1 = EarlyExitBlock(64 * block.expansion, num_classes)
-
-    def _make_layer(self, block, planes, num_blocks, stride):
-        strides = [stride] + [1] * (num_blocks - 1)
-        layers = []
-        for stride in strides:
-            layers.append(block(self.in_planes, planes, stride))
-            self.in_planes = planes * block.expansion
-        return nn.Sequential(*layers)
+        self.conv1 = nn.Conv2d(input_channels, 32, kernel_size=3, stride=2, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.inv_res1 = InvertedResidual(32, 16, 1, 1)
+        self.inv_res2 = InvertedResidual(16, 24, 2, 6)
+        self.early_exit_1 = EarlyExitBlock(24, num_classes)
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = self.layer1(out)
+        out = F.relu6(self.bn1(self.conv1(x)))
+        out = self.inv_res1(out)
+        out = self.inv_res2(out)
         ee1_out = self.early_exit_1(out)
         return out, ee1_out
 
 class Block2(pl.LightningModule):
-    def __init__(self, block, in_planes, num_blocks, num_classes=10):
+    def __init__(self, num_classes=10):
         super(Block2, self).__init__()
-        self.in_planes = in_planes
-        self.layer2 = self._make_layer(block, 128, num_blocks[0], stride=2)
-        self.early_exit_2 = EarlyExitBlock(128 * block.expansion, num_classes)
-
-    def _make_layer(self, block, planes, num_blocks, stride):
-        strides = [stride] + [1] * (num_blocks - 1)
-        layers = []
-        for stride in strides:
-            layers.append(block(self.in_planes, planes, stride))
-            self.in_planes = planes * block.expansion
-        return nn.Sequential(*layers)
+        self.inv_res3 = InvertedResidual(24, 24, 1, 6)
+        self.inv_res4 = InvertedResidual(24, 32, 2, 6)
+        self.inv_res5 = InvertedResidual(32, 32, 1, 6)
+        self.early_exit_2 = EarlyExitBlock(32, num_classes)
 
     def forward(self, x):
-        out = self.layer2(x)
+        out = self.inv_res3(x)
+        out = self.inv_res4(out)
+        out = self.inv_res5(out)
         ee2_out = self.early_exit_2(out)
         return out, ee2_out
 
 class Block3(pl.LightningModule):
-    def __init__(self, block, in_planes, num_blocks, num_classes=10):
+    def __init__(self, num_classes=10):
         super(Block3, self).__init__()
-        self.in_planes = in_planes
-        self.layer3 = self._make_layer(block, 256, num_blocks[0], stride=2)
-        self.early_exit_3 = EarlyExitBlock(256 * block.expansion, num_classes)
-
-    def _make_layer(self, block, planes, num_blocks, stride):
-        strides = [stride] + [1] * (num_blocks - 1)
-        layers = []
-        for stride in strides:
-            layers.append(block(self.in_planes, planes, stride))
-            self.in_planes = planes * block.expansion
-        return nn.Sequential(*layers)
+        self.inv_res6 = InvertedResidual(32, 64, 2, 6)
+        self.inv_res7 = InvertedResidual(64, 64, 1, 6)
+        self.inv_res8 = InvertedResidual(64, 64, 1, 6)
+        self.early_exit_3 = EarlyExitBlock(64, num_classes)
 
     def forward(self, x):
-        out = self.layer3(x)
+        out = self.inv_res6(x)
+        out = self.inv_res7(out)
+        out = self.inv_res8(out)
         ee3_out = self.early_exit_3(out)
         return out, ee3_out
 
 class Block4(pl.LightningModule):
-    def __init__(self, block, in_planes, num_blocks, num_classes=10):
+    def __init__(self, num_classes=10):
         super(Block4, self).__init__()
-        self.in_planes = in_planes
-        self.layer4 = self._make_layer(block, 512, num_blocks[0], stride=2)
-        self.linear = nn.Linear(512 * block.expansion, num_classes)
-
-    def _make_layer(self, block, planes, num_blocks, stride):
-        strides = [stride] + [1] * (num_blocks - 1)
-        layers = []
-        for stride in strides:
-            layers.append(block(self.in_planes, planes, stride))
-            self.in_planes = planes * block.expansion
-        return nn.Sequential(*layers)
+        self.inv_res9 = InvertedResidual(64, 96, 1, 6)
+        self.inv_res10 = InvertedResidual(96, 96, 1, 6)
+        self.inv_res11 = InvertedResidual(96, 96, 1, 6)
+        self.conv2 = nn.Conv2d(96, 1280, kernel_size=1, stride=1, padding=0, bias=False)
+        self.bn2 = nn.BatchNorm2d(1280)
+        self.dropout = nn.Dropout(0.2)
+        self.linear = nn.Linear(1280, num_classes)
 
     def forward(self, x):
-        out = self.layer4(x)
+        out = self.inv_res9(x)
+        out = self.inv_res10(out)
+        out = self.inv_res11(out)
+        out = F.relu6(self.bn2(self.conv2(out)))
         out = F.adaptive_avg_pool2d(out, (1, 1))
         out = torch.flatten(out, 1)
+        out = self.dropout(out)
         final_out = self.linear(out)
         return final_out
 
-class EarlyExitResNet50(pl.LightningModule):
+class EarlyExitMobileNetV2(pl.LightningModule):
     def __init__(self, num_classes=10, input_channels=3, input_height=32, input_width=32, loss_weights=[0.25, 0.25, 0.25, 0.25]):
-        super(EarlyExitResNet50, self).__init__()
+        super(EarlyExitMobileNetV2, self).__init__()
         self.example_input_array = torch.rand(1, input_channels, input_height, input_width)
-        self.block1 = Block1(Bottleneck, 64, [3], num_classes, input_channels)
-        self.block2 = Block2(Bottleneck, 256, [4], num_classes)
-        self.block3 = Block3(Bottleneck, 512, [6], num_classes)
-        self.block4 = Block4(Bottleneck, 1024, [3], num_classes)
+        self.block1 = Block1(num_classes, input_channels)
+        self.block2 = Block2(num_classes)
+        self.block3 = Block3(num_classes)
+        self.block4 = Block4(num_classes)
         self.accuracy1 = torchmetrics.Accuracy(num_classes=num_classes, task="multiclass")
         self.accuracy2 = torchmetrics.Accuracy(num_classes=num_classes, task="multiclass")
         self.accuracy3 = torchmetrics.Accuracy(num_classes=num_classes, task="multiclass")
@@ -217,5 +202,6 @@ class EarlyExitResNet50(pl.LightningModule):
         epoch_average = torch.stack(self.test_step_outputs).mean()
         self.log("test_epoch_average", epoch_average)
         self.test_step_outputs.clear()  # free memory
+
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=0.001)
