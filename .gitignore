@@ -6,3 +6,15 @@ __pycache__/
 
 .ipynb_checkpoints/
 .idea/wget-log
+*.pth
+*.ckpt
+*.zip
+*.tar
+*.gz
+*.whl
+*.egg
+*.h5
+*.pt
+*.pkl
+*.json
+*.csv
