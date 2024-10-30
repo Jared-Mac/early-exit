@@ -1,64 +1,84 @@
-import early_exit_resnet as resnet_split
-import early_exit_mobilenetv2 as mobilenet_split
-from torch.utils.data import DataLoader
-import torchvision
-import torchvision.transforms as transforms
 import torch
+import time
+import argparse
+from split_model import get_model_config, initialize_blocks
+from torchstat import stat
 
-device = torch.device("cpu")
+def load_blocks(model_type='resnet50', path='models/cifar10', device='cpu'):
+    """Load all blocks for the specified model type."""
+    # Get model configuration
+    ModelClass, block_configs, block_type = get_model_config(model_type)
+    
+    # Initialize blocks
+    blocks = initialize_blocks(ModelClass, block_type, block_configs, model_type)
+    
+    # Load saved state dictionaries
+    blocks_dir = f'{path}/{model_type}_blocks'
+    
+    for block_name, block in blocks.items():
+        block_path = f"{blocks_dir}/{block_name}.pth"
+        state_dict = torch.load(block_path, map_location=device)
+        block.load_state_dict(state_dict)
+        block.eval()
+    
+    # Create dummy input
+    batch_size = 1
+    x = torch.randn(batch_size, 3, 32, 32)
+    
+    return blocks, x
 
-# block1 = HeadNetworkPart1(block=Bottleneck, in_planes=64, num_blocks=[3], num_classes=10)
-# block2 = HeadNetworkPart2(Bottleneck, 256, [4], num_classes=10)
-# block3 = HeadNetworkPart3(block=Bottleneck, in_planes=512, num_blocks=[6], num_classes=10)
-# block4 = TailNetwork(block=Bottleneck, in_planes=1024, num_blocks=[3, 4, 6, 3], num_classes=10)
-#
-# model = EarlyExitResNet50(num_classes=3)
-#
-# block1_state_dict = {}
-# block2_state_dict = {}
-# block3_state_dict = {}
-# block4_state_dict = {}
-#
-# block1.load_state_dict(torch.load("models/cifar10/block1.pth", map_location=device))
-# block2.load_state_dict(torch.load("models/cifar10/block2.pth", map_location=device))
-# block3.load_state_dict(torch.load("models/cifar10/block3.pth", map_location=device))
-# block4.load_state_dict(torch.load("models/cifar10/block4.pth", map_location=device))
-#
-# model.head1 = block1
-# model.head2 = block2
-# model.head3 = block3
-# model.tail = block4
+def measure_block_times(blocks, x, device):
+    """Measure execution time for each block."""
+    times = {}
+    
+    with torch.no_grad():
+        # Block 1
+        start = time.perf_counter()
+        out1, _ = blocks['block1'](x)
+        times['block1'] = time.perf_counter() - start
+        
+        # Block 2
+        start = time.perf_counter()
+        out2, _ = blocks['block2'](out1)
+        times['block2'] = time.perf_counter() - start
 
-# test mobilenet
-mobilenet_block1 = mobilenet_split.Block1()
-mobilenet_block1.load_state_dict(torch.load("models/cifar10/mobilenetv2_blocks/block1.pth", map_location=device))
+        # Block 3
+        start = time.perf_counter()
+        out3, _ = blocks['block3'](out2)
+        times['block3'] = time.perf_counter() - start
 
-def evaluate_model(model, test_loader, device):
-    model.eval()  # Set model to evaluation mode
-    total_samples = len(test_loader.dataset)
-    correct = 0 # Assuming three exits
+        # Block 4
+        start = time.perf_counter()
+        _ = blocks['block4'](out3)
+        times['block4'] = time.perf_counter() - start
+    
+    return times
 
-    with torch.no_grad():  # No need to compute gradients
-        for inputs, labels in test_loader:
-            # print(inputs)
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-            exit = model(inputs)[1]  # Forward pass
-            softmax = torch.nn.Softmax(dim=1)
-            exit_soft = softmax(exit)
-            predictions = exit_soft.argmax(dim=1)
-            # print(inputs.shape)
-            correct += 1 if (predictions == labels) else 0
+def main():
+    # Add command line arguments
+    parser = argparse.ArgumentParser(description='Measure execution time for model blocks')
+    parser.add_argument('--model', type=str, choices=['resnet50', 'resnet18', 'mobilenetv2'],
+                      default='resnet50', help='Model architecture to use')
+    parser.add_argument('--device', type=str, choices=['cpu', 'cuda'],
+                      default='cpu', help='Device to use for computation')
+    parser.add_argument('--batch_size', type=int, default=1, help='Batch size') 
+    parser.add_argument('--path', type=str, default='models/cifar10', help='Path to model blocks')
 
-    accuracy = correct / total_samples
-    return accuracy
+    args = parser.parse_args()
+    
+    device = torch.device(args.device)
+    
+    # Load blocks and create input
+    print(f"\nMeasuring execution times for {args.model}")
+    blocks, x = load_blocks(args.model, args.path, device)
+    
+    # Measure execution times
+    times = measure_block_times(blocks, x, device)
+    
+    # Print results
+    print("\nExecution times:")
+    for block_name, execution_time in times.items():
+        print(f"{block_name} execution time: {execution_time*1000:.2f} ms")
 
-transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-])
-test_set = torchvision.datasets.CIFAR10(root='data', train=False, download=True,transform=transform)
-dataloader = DataLoader(test_set, batch_size=1, shuffle=True)
-
-accuracy = evaluate_model(mobilenet_block1, dataloader, 'cpu')
-print(accuracy)
+if __name__ == "__main__":
+    main()
