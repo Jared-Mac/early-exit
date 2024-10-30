@@ -20,6 +20,7 @@ def load_blocks(model_type='resnet50', path='models/cifar10', device='cpu'):
         block.load_state_dict(state_dict)
         block.eval()
     
+    
     # Create dummy input
     batch_size = 1
     x = torch.randn(batch_size, 3, 32, 32)
@@ -32,24 +33,26 @@ def measure_block_times(blocks, x, device):
     
     with torch.no_grad():
         # Block 1
-        start = time.perf_counter()
+        print("block 1 inf start")
+        start = time.time()
         out1, _ = blocks['block1'](x)
-        times['block1'] = time.perf_counter() - start
+        times['block1'] = time.time() - start
+        print("block 1 inf end")
         
         # Block 2
-        start = time.perf_counter()
+        start = time.time()
         out2, _ = blocks['block2'](out1)
-        times['block2'] = time.perf_counter() - start
+        times['block2'] = time.time() - start
         
         # Block 3
-        start = time.perf_counter()
+        start = time.time()
         out3, _ = blocks['block3'](out2)
-        times['block3'] = time.perf_counter() - start
+        times['block3'] = time.time() - start
         
         # Block 4
-        start = time.perf_counter()
+        start = time.time()
         _ = blocks['block4'](out3)
-        times['block4'] = time.perf_counter() - start
+        times['block4'] = time.time() - start
     
     return times
 
