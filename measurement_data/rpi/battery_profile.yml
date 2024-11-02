@@ -1,0 +1,13 @@
+pijuice:
+  Chemistry: LIPO
+  Capacity: 1000mAh
+  Charge current: 625mA
+  Termination current: 50mA
+  Regulation voltage: 4180mV
+  Cutoff voltage: 3000mV
+  Cold temperature: 0C
+  Cool temperature: 2C
+  Warm temperature: 49C
+  Hot temperature: 65C
+  NTC B constant(1k): 3450
+  NTC resistance(ohm): 10000
