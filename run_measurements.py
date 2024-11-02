@@ -3,7 +3,7 @@ import time
 import argparse
 from split_model import get_model_config, initialize_blocks
 from torchstat import stat
-from flops_profiler.profiler import get_model_profile
+# from flops_profiler.profiler import get_model_profile
 from thop import profile, clever_format
 import pandas as pd
 
@@ -30,7 +30,7 @@ def load_blocks(model_type='resnet50', path='models/cifar10', device=torch.devic
     
     return blocks, x
 
-def measure_block_times(blocks, x, device):
+def measure_block_times(blocks, x, device, repeat_times):
     """Measure execution time for each block."""
     times = {}
     
@@ -48,19 +48,16 @@ def measure_block_times(blocks, x, device):
         # Block 2
         start = time.time()
         out2, _ = blocks['block2'](out1)
-        print(out1.shape)
         times['block2'] = time.time() - start
         
         # Block 3
         start = time.time()
         out3, _ = blocks['block3'](out2)
-        print(out2.shape)
         times['block3'] = time.time() - start
         
         # Block 4
         start = time.time()
         _ = blocks['block4'](out3)
-        print(out3.shape)
         times['block4'] = time.time() - start
     
     return times
@@ -93,6 +90,7 @@ def main():
                         default='rpi', help='Device that run the models')
     parser.add_argument('--metrics', type=str, default='flops', choices=['flops', 'proc_time', 'VA'], nargs='+', help='the metrics to measure')
     parser.add_argument('--block_num', type=int, default=4, help='the number of blocks to run')
+    parser.add_argument('--repeat', type=int, default=50, help='repeat times for each experiment')
 
     args = parser.parse_args()
     
@@ -104,11 +102,12 @@ def main():
 
     metrics = args.metrics
     block_num = args.block_num
+    repeat_times = args.repeat
 
     for metric in metrics:
         if metric == 'proc_time':
             #Measure execution times
-            times = measure_block_times(blocks, x, device)
+            times = measure_block_times(blocks, x, device, repeat_times)
             # Print results
             print("\nExecution times:")
             for block_name, execution_time in times.items():
