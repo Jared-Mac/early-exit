@@ -6,6 +6,7 @@ from torchstat import stat
 from flops_profiler.profiler import get_model_profile
 from thop import profile, clever_format
 import pandas as pd
+import os
 
 def load_blocks(model_type='resnet50', path='models/cifar10', device=torch.device("cpu")):
     """Load all blocks for the specified model type."""
@@ -32,36 +33,38 @@ def load_blocks(model_type='resnet50', path='models/cifar10', device=torch.devic
 
 def measure_block_times(blocks, x, device):
     """Measure execution time for each block."""
-    times = {}
+    times = {
+        "mobilenet_block1": [],
+        "mobilenet_block2": [],
+        "mobilenet_block3": [],
+        "mobilenet_block4": [],
+    }
     
     with torch.no_grad():
         # Dummy execution
-        start = time.time()
+        # start = time.time()
         out1, _ = blocks['block1'](x)
-        times['dummy'] = time.time() - start
+        # times['dummy'] = time.time() - start
 
         # Block 1
         start = time.time()
         out1, _ = blocks['block1'](x)
-        times['block1'] = time.time() - start
+        times['mobilenet_block1'].append((time.time() - start)*1000)
         
         # Block 2
         start = time.time()
         out2, _ = blocks['block2'](out1)
-        print(out1.shape)
-        times['block2'] = time.time() - start
+        times['mobilenet_block2'].append((time.time() - start)*1000)
         
         # Block 3
         start = time.time()
         out3, _ = blocks['block3'](out2)
-        print(out2.shape)
-        times['block3'] = time.time() - start
+        times['mobilenet_block3'].append((time.time() - start)*1000)
         
         # Block 4
         start = time.time()
         _ = blocks['block4'](out3)
-        print(out3.shape)
-        times['block4'] = time.time() - start
+        times['mobilenet_block4'].append((time.time() - start)*1000)
     
     return times
 
@@ -105,14 +108,18 @@ def main():
     metrics = args.metrics
     block_num = args.block_num
 
+    data_dir = "measurement_data/rpi"
+
     for metric in metrics:
         if metric == 'proc_time':
             #Measure execution times
             times = measure_block_times(blocks, x, device)
             # Print results
-            print("\nExecution times:")
-            for block_name, execution_time in times.items():
-                print(f"{block_name} execution time: {execution_time*1000:.2f} ms")
+            # print("\nExecution times:")
+            # for block_name, execution_time in times.items():
+            #     print(f"{block_name} execution time: {execution_time*1000:.2f} ms")
+            df = pd.DataFrame(times)
+            df.to_csv(os.path.join(data_dir, "proc_time/test_timecollect.csv"))
         elif metric == 'flops':
             # Measure flops
             measure_flops(blocks, block_num, x, device)
