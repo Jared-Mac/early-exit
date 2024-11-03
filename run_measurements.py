@@ -7,6 +7,7 @@ from torchstat import stat
 from thop import profile, clever_format
 import pandas as pd
 import os
+from pijuice import PiJuice
 
 def load_blocks(model_type='resnet50', path='models/cifar10', device=torch.device("cpu")):
     """Load all blocks for the specified model type."""
@@ -177,10 +178,6 @@ def main():
         if metric == 'proc_time':
             #Measure execution times
             times = measure_block_times(blocks, x, device, repeat_times)
-            # Print results
-            # print("\nExecution times:")
-            # for block_name, execution_time in times.items():
-            #     print(f"{block_name} execution time: {execution_time*1000:.2f} ms")
             df = pd.DataFrame(times)
             df.to_csv(os.path.join(data_dir, f"proc_time/{model_name}_{repeat_times}.csv"), index=False)
         elif metric == 'flops':
@@ -189,7 +186,11 @@ def main():
             df = pd.DataFrame(flops)
             df.to_csv(os.path.join(data_dir, f"flops/{model_name}.csv"), index=False)
         elif metric == 'VA':
-            pass
+            sps = 10
+            sample_num = 100
+            va_data = measrue_voltage_and_currency(sps, sample_num)
+            df = pd.DataFrame(va_data)
+            df.to_csv(os.path.join(data_dir, f"VAs/{model_name}_{sps}_{sample_num}.csv"), index=False)
         else:
             print(f"Unknown metric {metric}!")
 
