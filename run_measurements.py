@@ -9,6 +9,8 @@ import pandas as pd
 import os
 from pijuice import PiJuice
 
+pijuice = PiJuice(1, 0x14)
+
 def load_blocks(model_type='resnet50', path='models/cifar10', device=torch.device("cpu")):
     """Load all blocks for the specified model type."""
     # Get model configuration
@@ -89,6 +91,7 @@ def measrue_voltage_and_currency(sps=10, sample_num=100):
     }
     sampling_interval = 1 / sps
     count = 0
+    # time.sleep(5)
     while True:
         # get voltage
         voltage_data = pijuice.status.GetBatteryVoltage()
@@ -188,6 +191,7 @@ def main():
         elif metric == 'VA':
             sps = 10
             sample_num = 100
+            print(f"Measuring voltage and current at sps {sps} and {sample_num} sample number...")
             va_data = measrue_voltage_and_currency(sps, sample_num)
             df = pd.DataFrame(va_data)
             df.to_csv(os.path.join(data_dir, f"VAs/{model_name}_{sps}_{sample_num}.csv"), index=False)
