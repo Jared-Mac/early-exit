@@ -1,4 +1,4 @@
-data/
+data/*
 lightning_logs/
 models/
 __pycache__/
@@ -18,3 +18,7 @@ __pycache__/
 *.pkl
 *.json
 *.csv
+tiny-imagenet-200/
+venv/
+model_data.txt
+nohup.out

@@ -142,7 +142,7 @@ class EarlyExitResNet50(pl.LightningModule):
         self.accuracy2 = torchmetrics.Accuracy(num_classes=num_classes, task="multiclass")
         self.accuracy3 = torchmetrics.Accuracy(num_classes=num_classes, task="multiclass")
         self.accuracyfinal = torchmetrics.Accuracy(num_classes=num_classes, task="multiclass")
-        
+        self.name = "resnet50"
         self.loss_weights = loss_weights
         self.test_step_outputs = []
         self.save_hyperparameters()

@@ -19,16 +19,18 @@ from components import Camera, Head, Tail, EarlyExitHead, EarlyExitTail, AlwaysT
 from simulation import Simulation
 
 def evaluate_strategies():
-    strategies = ['dql', 'always_transmit', 'early_exit']
+    strategies = ['dql', 'always_transmit', 'early_exit', 'early_exit_conservative', 'early_exit_balanced', 'early_exit_aggressive', 'early_exit_very_aggressive']
     results = {}
 
     for strategy in strategies:
         print(f"\nEvaluating {strategy} strategy:")
+        model_dir = 'models/tiny-imagenet/resnet18'
+        cached_data_file = model_dir+'/blocks/cached_logits.pkl'
         if strategy == 'dql':
-            sim = Simulation(strategy=strategy, load_model='/home/coder/early-exit/models/dql/cifar10/trained_dqn_model.pth')
+            sim = Simulation(strategy=strategy, cached_data_file=cached_data_file, load_model=model_dir+'/trained_dqn_model.pth')
         else:
-            sim = Simulation(strategy=strategy)
-        results[strategy] = sim.evaluate(max_sim_time=50000)
+            sim = Simulation(strategy=strategy, cached_data_file=cached_data_file)
+        results[strategy] = sim.evaluate(max_sim_time=5000)
 
     print("\nComparison of results:")
     for strategy, result in results.items():

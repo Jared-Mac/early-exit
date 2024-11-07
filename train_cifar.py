@@ -19,8 +19,8 @@ cifar10_dm = CIFAR10DataModule(batch_size=64)
 # cifar10_dm = CIFAR100DataModule(batch_size=350)
 
 # Initialize the model
-model = EarlyExitResNet50(num_classes=10, input_channels=3, input_height=32, input_width=32, loss_weights=[0.25, 0.25, 0.25, 0.25])
-
+# model = EarlyExitMobileNetV2(num_classes=10, input_channels=3, input_height=32, input_width=32, loss_weights=[0.25, 0.25, 0.25, 0.25])
+model = EarlyExitResNet18(num_classes=10, input_channels=3, input_height=32, input_width=32, loss_weights=[0.25, 0.25, 0.25, 0.25])
 # Set up PyTorch Lightning Trainer
 # ModelSummary(max_depth=2)
 trainer = Trainer(max_epochs=30,callbacks=[EarlyStopping(monitor="val_loss", mode="min")])

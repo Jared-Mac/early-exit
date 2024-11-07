@@ -3,7 +3,7 @@ import torch
 from dql import calculate_reward
 from ns.packet.packet import Packet
 import yaml
-from dataset import CIFAR10DataModule, CIFAR100DataModule, Flame2DataModule
+from dataset import CIFAR10DataModule, CIFAR100DataModule, Flame2DataModule, TinyImageNetDataModule
 
 with open('adapt/config.yaml', 'r') as config_file:
     config = yaml.safe_load(config_file)
@@ -28,6 +28,8 @@ def get_dataset():
         return CIFAR100DataModule()
     elif dataset == 'flame2':
         return Flame2DataModule()
+    elif dataset == 'tiny-imagenet':
+        return TinyImageNetDataModule()
     else:
         raise ValueError(f"Unknown dataset: {dataset}")
 
@@ -59,12 +61,17 @@ class Battery:
 
 
 class Camera:
-    def __init__(self, env, interval=1):
+    def __init__(self, env, cache_dataset, interval=1):
         self.env = env
         self.interval = interval
-        self.data_loader = get_dataset().test_dataloader()
+        self.data_loader = cache_dataset
         self.iterator = iter(self.data_loader)
-        self.image_shape = next(self.iterator)['image'].shape
+        first_item = next(self.iterator)
+        # Check if first_item is a list or tuple
+        if isinstance(first_item, (list, tuple)):
+            self.image_shape = first_item[0].shape  # Assuming image is the first element
+        else:
+            self.image_shape = first_item['image'].shape  # For dictionary format
         self.out = None
         self.env.process(self.run())
 
