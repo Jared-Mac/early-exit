@@ -9,11 +9,11 @@ from split_model import get_model_config, initialize_blocks
 def get_dataset(dataset_name, data_dir='./data'):
     """Get the appropriate dataset based on name."""
     if dataset_name == 'cifar10':
-        datamodule = CIFAR10DataModule(data_dir=data_dir)
+        datamodule = CIFAR10DataModule()
         datamodule.setup('test')
         return datamodule.cifar10_test
     elif dataset_name == 'cifar100':
-        datamodule = CIFAR100DataModule(data_dir=data_dir)
+        datamodule = CIFAR100DataModule(download=True)
         datamodule.setup('test')
         return datamodule.cifar100_test
     elif dataset_name == 'tiny-imagenet':

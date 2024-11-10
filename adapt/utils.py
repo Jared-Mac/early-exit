@@ -1,5 +1,6 @@
 import simpy
 from collections import deque
+import numpy as np
 
 
 class DataTracker:
@@ -36,7 +37,7 @@ class DataTracker:
 
     def update(self, accuracy, start_time, block_num, latency, action, total_flops, battery_state):
         self.total_classifications += 1
-        self.correct_classifications += accuracy
+        self.correct_classifications += int(accuracy)
         self.accuracy_window.append(accuracy)
         self.latency_window.append(latency)
         self.exit_window.append(block_num)
@@ -131,3 +132,13 @@ class DataTracker:
         if not self.battery_soc_window:
             return 0
         return self.battery_soc_window[-1]
+
+def generate_threshold_combinations(start=0.6, end=0.9, step=0.1):
+    thresholds = np.arange(start, end + step, step)
+    combinations = []
+    for t1 in thresholds:
+        for t2 in thresholds:
+            for t3 in thresholds:
+                for t4 in thresholds:
+                    combinations.append([t1, t2, t3, t4])
+    return combinations
