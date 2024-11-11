@@ -204,7 +204,7 @@ def main():
             sps = args.VA_sps
             sample_num = args.VA_spnum
             trans_rate = args.VA_transrate
-            process = subprocess.Popen(['python', 'run_transmission_sender.py', f'--rate {trans_rate}'])
+            process = subprocess.Popen(['python', 'run_transmission_sender.py', '--rate', trans_rate])
             time.sleep(5)
             va_data = measrue_voltage_and_currency(sps, sample_num)
             df = pd.DataFrame(va_data)
