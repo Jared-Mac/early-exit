@@ -173,8 +173,8 @@ def main():
     device = torch.device(args.device)
     
     # Load blocks and create input
-    print(f"\nMeasuring execution times for {args.model}")
-    blocks, x = load_blocks(args.model, args.path, device)
+    # print(f"\nMeasuring execution times for {args.model}")
+    # blocks, x = load_blocks(args.model, args.path, device)
 
     metrics = args.metrics
     block_num = args.block_num
