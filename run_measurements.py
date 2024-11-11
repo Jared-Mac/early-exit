@@ -8,6 +8,7 @@ from thop import profile, clever_format
 import pandas as pd
 import os
 from pijuice import PiJuice
+import subprocess
 
 def load_blocks(model_type='resnet50', path='models/cifar10', device=torch.device("cpu")):
     """Load all blocks for the specified model type."""
@@ -120,6 +121,9 @@ def measrue_voltage_and_currency(sps=10, sample_num=100):
 
     return data
 
+def run_subprocesses(script, parameters):
+    result = subprocess.run(['python', script], capture_output=True, text=True)
+
 def measure_flops(model_name, blocks, block_num, x, device):
     flops_data = {
         "block1": [],
@@ -156,6 +160,11 @@ def main():
     parser.add_argument('--host_device', type=str, choices=['rpi', 'nano'],
                         default='rpi', help='Device that run the models')
     parser.add_argument('--metrics', type=str, default='flops', choices=['flops', 'proc_time', 'VA'], nargs='+', help='Mtrics to measure')
+    parser.add_argument('--VA_sps', type=float, default=10, help='sampling rate to collect VA data')
+    parser.add_argument('--VA_spnum', type=float, default=100, help='number of samples to collect VA data')
+    parser.add_argument('--VA_transrate', type=float, default=100, help='data transmission rate')
+    parser.add_argument('--metrics', type=str, default='flops', choices=['flops', 'proc_time', 'VA'], nargs='+',
+                        help='Mtrics to measure')
     parser.add_argument('--block_num', type=int, default=4, help='Number of blocks to run')
     parser.add_argument('--repeat', type=int, default=50, help='Repeated times for each experiment')
 
@@ -186,11 +195,21 @@ def main():
             df = pd.DataFrame(flops)
             df.to_csv(os.path.join(data_dir, f"flops/{model_name}.csv"), index=False)
         elif metric == 'VA':
-            sps = 10
-            sample_num = 100
+            sps = args.VA_sps
+            sample_num = args.VA_spnum
             va_data = measrue_voltage_and_currency(sps, sample_num)
             df = pd.DataFrame(va_data)
             df.to_csv(os.path.join(data_dir, f"VAs/{model_name}_{sps}_{sample_num}.csv"), index=False)
+        elif metric == 'VA_trans':
+            sps = args.VA_sps
+            sample_num = args.VA_spnum
+            trans_rate = args.VA_transrate
+            process = subprocess.Popen(['python', 'run_transmission_sender.py', f'--rate {trans_rate}'])
+            time.sleep(5)
+            va_data = measrue_voltage_and_currency(sps, sample_num)
+            df = pd.DataFrame(va_data)
+            df.to_csv(os.path.join(data_dir, f"VAs-trans/{trans_rate}_{sps}_{sample_num}.csv"), index=False)
+            process.terminate()
         else:
             print(f"Unknown metric {metric}!")
 
