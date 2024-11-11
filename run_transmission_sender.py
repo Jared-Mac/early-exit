@@ -3,6 +3,7 @@ import time
 import argparse
 
 receiver_address = "172.31.149.34"
+receiver_port = 8080
 
 def send_data_with_rate(sock, data, rate_kbps):
     """
@@ -28,7 +29,7 @@ def main():
     args = parser.parse_args()
 
     rate = args.rate
-    server_address = (receiver_address, 12345)
+    server_address = (receiver_address, receiver_port)
     data_to_send = b'A' * 10240  # 10 KB
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
