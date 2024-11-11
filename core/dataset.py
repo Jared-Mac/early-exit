@@ -188,6 +188,8 @@ class CacheDataset(Dataset):
             self.base_dataset = base_dataset
         self.cached_data_file = cached_data_file
         self.models = models
+        for model in self.models:
+            model.eval()
         if not compute_logits and os.path.exists(self.cached_data_file):
             with open(self.cached_data_file, 'rb') as f:
                 self.cached_data = pickle.load(f)

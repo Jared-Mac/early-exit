@@ -10,11 +10,11 @@ import torch
 import numpy as np
 
 class Simulation:
-    def __init__(self, strategy='dql', load_model=None):
+    def __init__(self, strategy='dql', cached_data_file=None, load_model=None, confidence_thresholds=None):
         self.env = simpy.Environment()
         self.debug = False
-        self.cache_dataset = CacheDataset()
-        self.camera = Camera(self.env, self.cache_dataset, 1)
+        self.cache_dataset = CacheDataset(cached_data_file=cached_data_file, compute_logits=False)
+        self.camera = Camera(self.env, self.cache_dataset)
         image_shape = self.cache_dataset.image_shape
         self.data_tracker = DataTracker(self.env)
         
@@ -30,8 +30,26 @@ class Simulation:
         elif strategy == 'always_transmit':
             self.head = AlwaysTransmitHead(self.env, "head", self.data_tracker, debug=self.debug)
             self.tail = AlwaysTransmitTail(self.env, self.data_tracker, debug=self.debug)
-        elif strategy == 'early_exit':
-            self.head = EarlyExitHead(self.env, "head", self.data_tracker, confidence_threshold=0.8, debug=self.debug)
+        elif strategy.startswith('early_exit_custom'):
+            if confidence_thresholds is None:
+                raise ValueError("confidence_thresholds must be provided for early_exit_custom strategy")
+            if len(confidence_thresholds) != 4:  # Assuming 4 exit points
+                raise ValueError("confidence_thresholds must contain exactly 4 values")
+            self.head = EarlyExitHead(self.env, "head", self.data_tracker, 
+                                    confidence_thresholds=confidence_thresholds, 
+                                    debug=self.debug)
+            self.tail = EarlyExitTail(self.env, self.data_tracker, debug=self.debug)
+        elif strategy == 'early_exit_conservative':
+            self.head = EarlyExitHead(self.env, "head", self.data_tracker, confidence_thresholds=[0.9,0.9,0.9,0.9], debug=self.debug)
+            self.tail = EarlyExitTail(self.env, self.data_tracker, debug=self.debug)
+        elif strategy == 'early_exit_balanced':
+            self.head = EarlyExitHead(self.env, "head", self.data_tracker, confidence_thresholds=[0.8,0.8,0.8,0.8], debug=self.debug)
+            self.tail = EarlyExitTail(self.env, self.data_tracker, debug=self.debug)
+        elif strategy == 'early_exit_aggressive':
+            self.head = EarlyExitHead(self.env, "head", self.data_tracker, confidence_thresholds=[0.6,0.6,0.6,0.6], debug=self.debug)
+            self.tail = EarlyExitTail(self.env, self.data_tracker, debug=self.debug)
+        elif strategy == 'early_exit_very_aggressive':
+            self.head = EarlyExitHead(self.env, "head", self.data_tracker, confidence_thresholds=[0.4,0.4,0.4,0.4], debug=self.debug)
             self.tail = EarlyExitTail(self.env, self.data_tracker, debug=self.debug)
         else:
             raise ValueError(f"Unknown strategy: {strategy}")

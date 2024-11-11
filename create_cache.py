@@ -1,30 +1,68 @@
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import DataLoader
 import torchvision
 import torchvision.transforms as transforms
-from early_exit_resnet import *
-from core.dataset import CacheDataset
+from adapt.dataset import CacheDataset, CIFAR10DataModule, CIFAR100DataModule, TinyImageNetDataModule
+import os
+import argparse
+from split_model import get_model_config, initialize_blocks
 
-block1 = HeadNetworkPart1(block=Bottleneck, in_planes=64, num_blocks=[3], num_classes=10)
-block2 = HeadNetworkPart2(Bottleneck, 256, [4], num_classes=10)
-block3 = HeadNetworkPart3(block=Bottleneck, in_planes=512, num_blocks=[6], num_classes=10)
-block4 = TailNetwork(block=Bottleneck, in_planes=1024, num_blocks=[3, 4, 6, 3], num_classes=10)
+def get_dataset(dataset_name, data_dir='./data'):
+    """Get the appropriate dataset based on name."""
+    if dataset_name == 'cifar10':
+        datamodule = CIFAR10DataModule()
+        datamodule.setup('test')
+        return datamodule.cifar10_test
+    elif dataset_name == 'cifar100':
+        datamodule = CIFAR100DataModule(download=True)
+        datamodule.setup('test')
+        return datamodule.cifar100_test
+    elif dataset_name == 'tiny-imagenet':
+        datamodule = TinyImageNetDataModule()
+        datamodule.setup('test')
+        return datamodule.test_dataset
+    else:
+        raise ValueError(f"Dataset {dataset_name} not supported")
 
-block1.load_state_dict(torch.load("models/cifar10/block1.pth"))
-block2.load_state_dict(torch.load("models/cifar10/block2.pth"))
-block3.load_state_dict(torch.load("models/cifar10/block3.pth"))
-block4.load_state_dict(torch.load("models/cifar10/block4.pth"))
+def create_cache(block_dir, model_type, dataset_name, num_classes, data_dir='./data'):
+    # Create models directory if it doesn't exist
+    os.makedirs(block_dir, exist_ok=True)
+    
+    # Get model configuration and initialize blocks
+    ModelClass, block_configs, block_type = get_model_config(model_type)
+    blocks = initialize_blocks(ModelClass, block_type, block_configs, model_type, num_classes)
+    
+    # Load model weights from the specified directory
+    for block_name, block in blocks.items():
+        block.load_state_dict(torch.load(os.path.join(block_dir, f"{block_name}.pth")))
+        block.eval()
 
-block1.eval()
-block2.eval()
-block3.eval()
-block4.eval()
+    # Get the appropriate dataset
+    test_set = get_dataset(dataset_name, data_dir)
+    
+    # Create cache file path in the block directory
+    cache_file = os.path.join(block_dir, f'cached_logits.pkl')
+    
+    custom_test_set = CacheDataset(
+        test_set, 
+        cached_data_file=cache_file,
+        models=blocks,
+        compute_logits=True
+    )
 
-transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-])
-test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
-custom_test_set = CacheDataset(test_set, models={'block1': block1, 'block2': block2, 'block3': block3, 'block4': block4},compute_logits=True)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Create cache for blocks')
+    parser.add_argument('--block_dir', type=str, default='models/cifar10',
+                        help='Directory containing block weights and where to save cache')
+    parser.add_argument('--model_type', type=str, default='resnet50',
+                        choices=['resnet50', 'resnet18', 'mobilenetv2'],
+                        help='Type of model to use')
+    parser.add_argument('--dataset', type=str, default='cifar10',
+                        choices=['cifar10', 'cifar100', 'tiny-imagenet'],
+                        help='Dataset to create cache for')
+    parser.add_argument('--num_classes', type=int, default=10,
+                        help='Number of output classes for the model')
+    parser.add_argument('--data_dir', type=str, default='./data',
+                        help='Directory containing the dataset')
+    args = parser.parse_args()
+    
+    create_cache(args.block_dir, args.model_type, args.dataset, args.num_classes, args.data_dir)

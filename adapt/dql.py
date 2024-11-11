@@ -5,7 +5,6 @@ import numpy as np
 from collections import deque
 import random
 import simpy
-import pybamm
 
 def calculate_reward(action, accuracy, latency, block_num, battery_state):
     base_reward = 0

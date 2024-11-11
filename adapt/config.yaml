@@ -9,38 +9,38 @@ packet_sizes:
 # Block processing times in seconds
 block_processing_times:
   mobilenetv2:
-    block0: 0.005
-    block1: 0.015
-    block2: 0.025
-    block3: 0.035
+    block0: 0.008451
+    block1: 0.010490
+    block2: 0.010306
+    block3: 0.011895
   resnet18:
-    block0: 0.01
-    block1: 0.03
-    block2: 0.05
-    block3: 0.07
+    block0: 0.027375
+    block1: 0.023139
+    block2: 0.022367
+    block3: 0.041036
   resnet50:
-    block0: 0.02
-    block1: 0.06
-    block2: 0.10
-    block3: 0.14
+    block0: 0.068596
+    block1: 0.069558
+    block2: 0.097112
+    block3: 0.101480
 
 # Block CPU FLOPS (floating-point operations per second)
 block_cpu_flops:
   mobilenetv2:
-    block0: 100000000  # 0.1 GFLOPs
-    block1: 300000000  # 0.3 GFLOPs
-    block2: 500000000  # 0.5 GFLOPs
-    block3: 700000000  # 0.7 GFLOPs
+    block0: 1237000  # 1.237M FLOPs
+    block1: 1223000  # 1.223M FLOPs 
+    block2: 623296  # 623.296K FLOPs
+    block3: 1764000  # 1.764M FLOPs
   resnet18:
-    block0: 200000000  # 0.2 GFLOPs
-    block1: 600000000  # 0.6 GFLOPs
-    block2: 1000000000  # 1.0 GFLOPs
-    block3: 1400000000  # 1.4 GFLOPs
+    block0: 154145000  # 154.145M FLOPs
+    block1: 134915000  # 134.915M FLOPs
+    block2: 134579000  # 134.579M FLOPs
+    block3: 134387000  # 134.387M FLOPs
   resnet50:
-    block0: 400000000  # 0.4 GFLOPs
-    block1: 1200000000  # 1.2 GFLOPs
-    block2: 2000000000  # 2.0 GFLOPs
-    block3: 2800000000  # 2.8 GFLOPs
+    block0: 226182000  # 226.182M FLOPs
+    block1: 339773000  # 339.773M FLOPs
+    block2: 481101000  # 481.101M FLOPs
+    block3: 265081000  # 265.081M FLOPs
 
 # Agent time in seconds
 agent_time: 0.001
@@ -91,4 +91,4 @@ early_exit:
 model: "resnet18"  # Options: "mobilenetv2", "resnet18", "resnet50"
 
 # Dataset selection
-dataset: "cifar10"  # Options: "cifar10", "cifar100", "flame2"
+dataset: "tiny-imagenet"  # Options: "cifar10", "cifar100", "flame2", "tiny-imagenet"

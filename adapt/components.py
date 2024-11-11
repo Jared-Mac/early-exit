@@ -1,9 +1,10 @@
 import simpy
 import torch
+from torch.nn import Softmax
 from dql import calculate_reward
 from ns.packet.packet import Packet
 import yaml
-from dataset import CIFAR10DataModule, CIFAR100DataModule, Flame2DataModule
+from dataset import CIFAR10DataModule, CIFAR100DataModule, Flame2DataModule, TinyImageNetDataModule
 
 with open('adapt/config.yaml', 'r') as config_file:
     config = yaml.safe_load(config_file)
@@ -19,6 +20,7 @@ current_draw = config['current_draw'][model]
 idle_current = config['current_draw']['idle']
 
 AGENT_TIME = agent_time
+softmax = Softmax(dim=0)
 
 # Function to get the appropriate dataset
 def get_dataset():
@@ -28,6 +30,8 @@ def get_dataset():
         return CIFAR100DataModule()
     elif dataset == 'flame2':
         return Flame2DataModule()
+    elif dataset == 'tiny-imagenet':
+        return TinyImageNetDataModule()
     else:
         raise ValueError(f"Unknown dataset: {dataset}")
 
@@ -59,12 +63,17 @@ class Battery:
 
 
 class Camera:
-    def __init__(self, env, interval=1):
+    def __init__(self, env, cache_dataset, interval=1):
         self.env = env
         self.interval = interval
-        self.data_loader = get_dataset().test_dataloader()
+        self.data_loader = cache_dataset
         self.iterator = iter(self.data_loader)
-        self.image_shape = next(self.iterator)['image'].shape
+        first_item = next(self.iterator)
+        # Check if first_item is a list or tuple
+        if isinstance(first_item, (list, tuple)):
+            self.image_shape = first_item[0].shape  # Assuming image is the first element
+        else:
+            self.image_shape = first_item['image'].shape  # For dictionary format
         self.out = None
         self.env.process(self.run())
 
@@ -112,10 +121,8 @@ class Head:
             
             # Update battery for processing
             self.battery.update(self.get_processing_current(), processing_time)
-            
             image = data['image'].clone().detach() if isinstance(data['image'], torch.Tensor) else torch.tensor(data['image'], dtype=torch.float32)
-            logits = data['logits'][block_num].clone().detach() if isinstance(data['logits'][block_num], torch.Tensor) else torch.tensor(data['logits'][block_num], dtype=torch.float32)
-            
+            logits = data['logits'][block_num].clone().detach() 
             # Get current battery state
             battery_state = self.battery.get_state()
             data['battery'] = battery_state
@@ -151,7 +158,11 @@ class Head:
                 self.agent.store_experience((state, action, reward, next_state, False))
 
             elif action == 1:  # Exit without transmitting
-                accuracy = int(logits.argmax()) == int(data['label'])
+
+                prediction = torch.argmax(softmax(logits))
+                accuracy = prediction == data['label']
+                with open('results.txt', 'a') as f:
+                    f.write(f"prediction: {prediction}, label: {data['label']}\n")
                 reward = calculate_reward(action, accuracy, current_latency, block_num, data['battery'])
                 cont = False
                 state = {
@@ -171,6 +182,9 @@ class Head:
                 self.data_tracker.update(accuracy, start_time, block_num, current_latency, action, total_flops, battery_state)
             elif action == 2:  # Exit and transmit  
                 accuracy = int(logits.argmax()) == int(data['label'])
+                prediction = torch.argmax(softmax(logits))
+                with open('results.txt', 'a') as f:
+                    f.write(f"prediction: {prediction}, label: {data['label']}\n")
                 reward = calculate_reward(action, accuracy, current_latency, block_num, data['battery'])
                 self.send_packet(data, block_num, action, current_latency, total_flops)
                 cont = False
@@ -279,7 +293,8 @@ class Tail:
             previous_prediction = torch.argmax(previous_logits).item()
             true_label = data['label']
             
-            latency = packet.latency
+
+            latency = self.env.now - start_time
             total_flops = packet.total_flops  # Add this line
             if previous_prediction == true_label:
                 reward = - latency
@@ -288,7 +303,8 @@ class Tail:
             self.agent.store_experience((state, action, reward, next_state, True))
             final_prediction = torch.argmax(data['logits'][3]).item()
             accuracy = final_prediction == true_label
-            self.data_tracker.update(accuracy, start_time, block_num, latency, action, total_flops,data['battery'])
+            
+            self.data_tracker.update(accuracy, start_time, 3, latency, action, total_flops,data['battery'])
             if self.debug:
                 print(f"Received packet with data at time {self.env.now}")
                 print(f"Data type: {type(data)}")
@@ -351,9 +367,13 @@ class AlwaysTransmitTail(Tail):
             print(f"Received packet at time {self.env.now}")
 
 class EarlyExitHead(Head):
-    def __init__(self, env, element_id, data_tracker, confidence_threshold=0.8, exits=4, debug=False):
+    def __init__(self, env, element_id, data_tracker, confidence_thresholds=None, exits=4, debug=False):
         super().__init__(env, element_id, None, data_tracker, exits, debug)
-        self.confidence_threshold = confidence_threshold
+        if confidence_thresholds is not None:
+            self.confidence_thresholds = confidence_thresholds
+        else:
+            # Use the same threshold for all exits if only one is provided
+            self.confidence_thresholds = [confidence_thresholds] * 4
 
     def process_item(self, data):
         self.data_counter += 1
@@ -383,7 +403,7 @@ class EarlyExitHead(Head):
             battery_state = self.battery.get_state()
             data['battery'] = battery_state
             
-            if confidence >= self.confidence_threshold or block_num == 3:
+            if confidence >= self.confidence_thresholds[block_num] or block_num == 3:
                 self.send_to_data_tracker(data, block_num, latency, total_flops, battery_state)
                 break
 

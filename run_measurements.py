@@ -10,6 +10,8 @@ import os
 from pijuice import PiJuice
 import subprocess
 
+pijuice = PiJuice(1, 0x14)
+
 def load_blocks(model_type='resnet50', path='models/cifar10', device=torch.device("cpu")):
     """Load all blocks for the specified model type."""
     # Get model configuration
@@ -159,12 +161,10 @@ def main():
     parser.add_argument('--path', type=str, default='models/cifar10', help='Path to model blocks')
     parser.add_argument('--host_device', type=str, choices=['rpi', 'nano'],
                         default='rpi', help='Device that run the models')
-    parser.add_argument('--metrics', type=str, default='flops', choices=['flops', 'proc_time', 'VA'], nargs='+', help='Mtrics to measure')
+    parser.add_argument('--metrics', type=str, default='flops', choices=['flops', 'proc_time', 'VA', 'VA_trans'], nargs='+', help='Mtrics to measure')
     parser.add_argument('--VA_sps', type=float, default=10, help='sampling rate to collect VA data')
     parser.add_argument('--VA_spnum', type=float, default=100, help='number of samples to collect VA data')
     parser.add_argument('--VA_transrate', type=float, default=100, help='data transmission rate')
-    parser.add_argument('--metrics', type=str, default='flops', choices=['flops', 'proc_time', 'VA'], nargs='+',
-                        help='Mtrics to measure')
     parser.add_argument('--block_num', type=int, default=4, help='Number of blocks to run')
     parser.add_argument('--repeat', type=int, default=50, help='Repeated times for each experiment')
 

@@ -30,21 +30,21 @@ def get_model_config(model_type):
     
     return configs[model_type]
 
-def initialize_blocks(ModelClass, block_type, block_configs, model_type):
+def initialize_blocks(ModelClass, block_type, block_configs, model_type, num_classes):
     """Initialize all blocks for the given model configuration."""
     if model_type == "mobilenetv2":
         blocks = {
-            'block1': ModelClass.Block1(num_classes=10),
-            'block2': ModelClass.Block2(num_classes=10),
-            'block3': ModelClass.Block3(num_classes=10),
-            'block4': ModelClass.Block4(num_classes=10)
+            'block1': ModelClass.Block1(num_classes=num_classes),
+            'block2': ModelClass.Block2(num_classes=num_classes),
+            'block3': ModelClass.Block3(num_classes=num_classes),
+            'block4': ModelClass.Block4(num_classes=num_classes)
         }
     else:  # ResNet models
         blocks = {
-            'block1': ModelClass.Block1(block_type, block_configs[0][0], block_configs[0][1], num_classes=10, input_channels=3),
-            'block2': ModelClass.Block2(block_type, block_configs[1][0], block_configs[1][1], num_classes=10),
-            'block3': ModelClass.Block3(block_type, block_configs[2][0], block_configs[2][1], num_classes=10),
-            'block4': ModelClass.Block4(block_type, block_configs[3][0], block_configs[3][1], num_classes=10)
+            'block1': ModelClass.Block1(block_type, block_configs[0][0], block_configs[0][1], num_classes=num_classes, input_channels=3),
+            'block2': ModelClass.Block2(block_type, block_configs[1][0], block_configs[1][1], num_classes=num_classes),
+            'block3': ModelClass.Block3(block_type, block_configs[2][0], block_configs[2][1], num_classes=num_classes),
+            'block4': ModelClass.Block4(block_type, block_configs[3][0], block_configs[3][1], num_classes=num_classes)
         }
     return blocks
 
@@ -68,12 +68,17 @@ def save_block_models(blocks, block_state_dicts, save_dir):
         block.load_state_dict(block_state_dicts[block_name])
         save_path = os.path.join(save_dir, f'{block_name}.pth')
         torch.save(block.state_dict(), save_path)
-
 def main():
     parser = argparse.ArgumentParser(description='Split neural network model into blocks')
     parser.add_argument('--model-type', type=str, default='mobilenetv2',
                       choices=['resnet50', 'resnet18', 'mobilenetv2'],
                       help='Type of model to split')
+    parser.add_argument('--model-path', type=str, required=True,
+                      help='Path to the combined model checkpoint file')
+    parser.add_argument('--output-dir', type=str, required=True,
+                      help='Directory to save the split model blocks')
+    parser.add_argument('--num-classes', type=int, required=True,
+                      help='Number of output classes for the model')
     args = parser.parse_args()
 
     try:
@@ -81,23 +86,21 @@ def main():
         ModelClass, block_configs, block_type = get_model_config(args.model_type)
         
         # Load combined model state dict
-        model_path = f'models/cifar10/{args.model_type}.ckpt'
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Model file not found: {model_path}")
+        if not os.path.exists(args.model_path):
+            raise FileNotFoundError(f"Model file not found: {args.model_path}")
         
-        combined_state_dict = torch.load(model_path)
+        combined_state_dict = torch.load(args.model_path)
         
         # Initialize blocks with model_type
-        blocks = initialize_blocks(ModelClass, block_type, block_configs, args.model_type)
+        blocks = initialize_blocks(ModelClass, block_type, block_configs, args.model_type, args.num_classes)
         
         # Split state dictionary
         block_state_dicts = split_state_dict(combined_state_dict)
         
         # Save individual block models
-        save_dir = f'models/cifar10/{args.model_type}_blocks'
-        save_block_models(blocks, block_state_dicts, save_dir)
+        save_block_models(blocks, block_state_dicts, args.output_dir)
         
-        print(f"Successfully split models saved to {save_dir}")
+        print(f"Successfully split models saved to {args.output_dir}")
         
     except Exception as e:
         print(f"Error occurred: {str(e)}")
