@@ -1,22 +1,25 @@
 import socket
 
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def receive_data(sock):
+    while True:
+        data = sock.recv(1024)  # get 1KB each time
+        if not data:
+            print("client disconnected")
+            break
+        print(f"received data: {data}")
 
-server_socket.bind(('localhost', 8080))
+# 服务端监听设置
+server_address = ('0.0.0.0', 8080)
+server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_sock.bind(server_address)
+server_sock.listen(1)
 
-# maximum connection
-server_socket.listen(5)
-print("Server started, waiting...")
+print("waiting for client...")
+client_sock, client_address = server_sock.accept()
+print(f"client connected: {client_address}")
 
-while True:
-
-    client_socket, address = server_socket.accept()
-    print(f"connection from: {address}")
-
-    data = client_socket.recv(1024).decode()
-    print(f"received data: {data}")
-
-    response = "Receiver has got the message"
-    client_socket.send(response.encode())
-
-    client_socket.close()
+try:
+    receive_data(client_sock)
+finally:
+    client_sock.close()
+    server_sock.close()
