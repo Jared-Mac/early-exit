@@ -123,9 +123,6 @@ def measrue_voltage_and_currency(sps=10, sample_num=100):
 
     return data
 
-def run_subprocesses(script, parameters):
-    result = subprocess.run(['python', script], capture_output=True, text=True)
-
 def measure_flops(model_name, blocks, block_num, x, device):
     flops_data = {
         "block1": [],
@@ -163,8 +160,8 @@ def main():
                         default='rpi', help='Device that run the models')
     parser.add_argument('--metrics', type=str, default='flops', choices=['flops', 'proc_time', 'VA', 'VA_trans'], nargs='+', help='Mtrics to measure')
     parser.add_argument('--VA_sps', type=float, default=10, help='sampling rate to collect VA data')
-    parser.add_argument('--VA_spnum', type=float, default=100, help='number of samples to collect VA data')
-    parser.add_argument('--VA_transrate', type=float, default=100, help='data transmission rate')
+    parser.add_argument('--VA_spnum', type=float, default=200, help='number of samples to collect VA data')
+    parser.add_argument('--VA_transrate', type=int, default=100, help='data transmission rate')
     parser.add_argument('--block_num', type=int, default=4, help='Number of blocks to run')
     parser.add_argument('--repeat', type=int, default=50, help='Repeated times for each experiment')
 

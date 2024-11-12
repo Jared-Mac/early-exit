@@ -2,8 +2,7 @@ import socket
 import time
 import argparse
 
-# receiver_address = "172.31.149.34"
-receiver_address = 'localhost'
+receiver_address = "172.31.149.34"
 receiver_port = 8080
 
 def send_data_with_rate(sock, data, rate_kbps):
