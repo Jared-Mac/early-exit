@@ -18,7 +18,7 @@ def load_blocks(model_type='resnet50', path='models/cifar10', device=torch.devic
     ModelClass, block_configs, block_type = get_model_config(model_type)
     
     # Initialize blocks
-    blocks = initialize_blocks(ModelClass, block_type, block_configs, model_type)
+    blocks = initialize_blocks(ModelClass, block_type, block_configs, model_type, num_classes=10)
     
     # Load saved state dictionaries
     blocks_dir = f'{path}/{model_type}_blocks'
