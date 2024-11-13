@@ -591,12 +591,43 @@ def plot_stacked_3d_surfaces_side_by_side(results_df):
     plt.close('all')
 
 def main():
-    results_df = pd.read_csv('threshold_results.csv')
-    results_df = results_df[
-        (results_df['threshold1'] >= 0.65) & (results_df['threshold1'] <= 0.95) &
-        (results_df['threshold2'] >= 0.65) & (results_df['threshold2'] <= 0.95) &
-        (results_df['threshold3'] >= 0.65) & (results_df['threshold3'] <= 0.95)
-    ]
+    # Get dataset name and model from cache path
+    cache_path = 'models/visualwakewords/mobilenetv2/blocks/cached_logits.pkl'
+    dataset = cache_path.split('/')[1]
+    model = cache_path.split('/')[2]
+    
+    # Run simulation with grid search over thresholds
+    sim = Simulation(strategy='early_exit_custom', 
+                    cached_data_file=cache_path)
+
+    # Create thresholds grid
+    thresholds = np.arange(0.5, 1.0, 0.05)
+    results = []
+
+    # Grid search over thresholds
+    for t1 in thresholds:
+        for t2 in thresholds:
+            for t3 in thresholds:
+                metrics = sim.run(confidence_thresholds=[t1, t2, t3, 1.0])
+                results.append({
+                    'threshold1': t1,
+                    'threshold2': t2, 
+                    'threshold3': t3,
+                    'accuracy': metrics['accuracy'],
+                    'avg_latency': metrics['avg_latency'],
+                    'exit_distribution': str(metrics['exit_distribution'])
+                })
+
+    # Save results
+    results_df = pd.DataFrame(results)
+    output_file = f'threshold_results_{dataset}_{model}.csv'
+    results_df.to_csv(output_file, index=False)
+    # results_df = pd.read_csv('threshold_results.csv')
+    # results_df = results_df[
+    #     (results_df['threshold1'] >= 0.65) & (results_df['threshold1'] <= 0.95) &
+    #     (results_df['threshold2'] >= 0.65) & (results_df['threshold2'] <= 0.95) &
+    #     (results_df['threshold3'] >= 0.65) & (results_df['threshold3'] <= 0.95)
+    # ]
     plot_stacked_3d_surfaces_side_by_side(results_df)
 
 if __name__ == "__main__":

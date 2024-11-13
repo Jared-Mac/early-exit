@@ -44,12 +44,23 @@ class Battery:
         self.discharge_rate = battery_config['discharge_rate']
         self.voltage = battery_config['voltage']
         self.temperature = 25.0  # Celsius
+        self.last_update_time = env.now  # Track last update timestamp
 
     def get_state(self):
         soc = self.charge / self.capacity
         return torch.tensor([soc], dtype=torch.float32)
 
     def update(self, current, duration):
+        # First handle idle time since last update
+        idle_time = self.env.now - self.last_update_time
+        if idle_time > 0:
+            self._apply_discharge(idle_current, idle_time)
+        
+        # Then handle the actual operation
+        self._apply_discharge(current, duration)
+        self.last_update_time = self.env.now
+
+    def _apply_discharge(self, current, duration):
         # Convert duration from seconds to hours
         duration_hours = duration / 3600
         # Calculate energy consumed in mAh
@@ -58,8 +69,8 @@ class Battery:
         charge_consumed += self.discharge_rate * duration_hours
         self.charge = max(0, self.charge - charge_consumed)
         # Update temperature (simplified model)
-        self.temperature += 0.1 * current * duration_hours  # Slight temperature increase with usage
-        self.temperature = min(45, max(0, self.temperature))  # Clamp temperature between 0 and 45 Celsius
+        self.temperature += 0.1 * current * duration_hours
+        self.temperature = min(45, max(0, self.temperature))
 
 
 class Camera:
@@ -195,15 +206,7 @@ class Head:
                 
                 break
             
-
-            # Update battery for idle time
-            idle_time = self.env.now - start_time - sum(block_processing_times[f'block{i}'] for i in range(block_num+1))
-            if idle_time > 0:
-                self.battery.update(self.get_idle_current(), idle_time)
-
-            # Update Block Number
             block_num += 1
-
 
     def get_processing_current(self):
         return current_draw['processing']
@@ -361,7 +364,7 @@ class AlwaysTransmitTail(Tail):
             accuracy = final_prediction == true_label
             total_flops = packet.total_flops
             battery_state = data.get('battery', torch.tensor([1.0, 3.7, 25.0]))  # Default values if battery info is missing
-            self.data_tracker.update(accuracy, start_time, 0, latency, 2, total_flops, battery_state)
+            self.data_tracker.update(accuracy, start_time, 3, latency, 2, total_flops, battery_state)
 
         if self.debug:
             print(f"Received packet at time {self.env.now}")

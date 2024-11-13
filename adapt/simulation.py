@@ -10,7 +10,7 @@ import torch
 import numpy as np
 
 class Simulation:
-    def __init__(self, strategy='dql', cached_data_file=None, load_model=None, confidence_thresholds=None):
+    def __init__(self, strategy='dql', cached_data_file=None, load_model=None, confidence_thresholds=None, num_classes=10):
         self.env = simpy.Environment()
         self.debug = False
         self.cache_dataset = CacheDataset(cached_data_file=cached_data_file, compute_logits=False)
@@ -22,7 +22,7 @@ class Simulation:
         battery_features = 1  # e.g., SoC, voltage, temperature
         
         if strategy == 'dql':
-            self.agent = DQLAgent(self.env, num_classes=10, num_exit=4, image_shape=image_shape, battery_features=battery_features)
+            self.agent = DQLAgent(self.env, num_classes=num_classes, num_exit=4, image_shape=image_shape, battery_features=battery_features)
             if load_model:
                 self.agent.load_model(load_model)
             self.head = Head(self.env, "head", self.agent, self.data_tracker, debug=self.debug)

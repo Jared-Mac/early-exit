@@ -1,3 +1,5 @@
+import argparse
+import os
 import simpy
 import torch
 from torch import nn, optim
@@ -20,28 +22,49 @@ from utils import DataTracker
 from components import Camera, Head, Tail, EarlyExitHead, EarlyExitTail, AlwaysTransmitHead, AlwaysTransmitTail
 from simulation import Simulation
 
-def evaluate_strategies():
+def evaluate_strategies(dataset, model_type):
+    # Define number of classes for each dataset
+    dataset_classes = {
+        'cifar10': 10,
+        'cifar100': 100,
+        'tiny-imagenet': 200,
+        # Add other datasets as needed
+    }
+    
+    num_classes = dataset_classes.get(dataset, 10)  # Default to 10 if dataset not found
+    
     # Strategies to evaluate
     strategies = ['dql', 'always_transmit', 'early_exit_conservative', 'early_exit_balanced', 'early_exit_aggressive', 'early_exit_very_aggressive']
     results = {}
     
+    # Construct paths
+    base_dir = f'models/{dataset}/{model_type}'
+    csv_path = os.path.join(base_dir, 'strategy_results.csv')
+    plot_path = os.path.join(base_dir, 'strategy_comparison.png')
+    
     # Try to load existing results
-    csv_path = 'strategy_results.csv'
     try:
         df = pd.read_csv(csv_path)
         results = df.set_index('strategy').to_dict('index')
-        print("Loaded existing results from CSV")
+        print(f"Loaded existing results from {csv_path}")
     except FileNotFoundError:
         # Run evaluations if no CSV exists
         for strategy in strategies:
             print(f"\nEvaluating {strategy} strategy:")
-            model_dir = 'models/cifar10/resnet50'
-            cached_data_file = model_dir+'/blocks/cached_logits.pkl'
+            cached_data_file = os.path.join(base_dir, 'blocks/cached_logits.pkl')
             if strategy == 'dql':
-                sim = Simulation(strategy=strategy, cached_data_file=cached_data_file, load_model=model_dir+'/trained_dqn_model.pth')
+                sim = Simulation(strategy=strategy, 
+                               cached_data_file=cached_data_file,
+                               load_model=os.path.join(base_dir, 'trained_dqn_model.pth'),
+                               num_classes=num_classes)
             else:
-                sim = Simulation(strategy=strategy, cached_data_file=cached_data_file)
+                sim = Simulation(strategy=strategy, 
+                               cached_data_file=cached_data_file,
+                               num_classes=num_classes)
             results[strategy] = sim.evaluate(max_sim_time=5000)
+        
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
         
         # Save results to CSV
         df = pd.DataFrame.from_dict(results, orient='index')
@@ -77,7 +100,7 @@ def evaluate_strategies():
                    ha='center', va='bottom')
 
     plt.tight_layout()
-    plt.savefig('strategy_comparison.png')
+    plt.savefig(plot_path)
     plt.close()
 
     # Print numerical results as before
@@ -95,4 +118,11 @@ def evaluate_strategies():
         print(f"Final Battery SoC: {result['final_battery_soc']:.2f}")
 
 if __name__ == "__main__":
-    evaluate_strategies()
+    parser = argparse.ArgumentParser(description='Evaluate different strategies for model execution')
+    parser.add_argument('--dataset', type=str, default='cifar10', 
+                       help='Dataset name (default: cifar10)')
+    parser.add_argument('--model_type', type=str, default='resnet50',
+                       help='Model type (default: resnet50)')
+    
+    args = parser.parse_args()
+    evaluate_strategies(args.dataset, args.model_type)

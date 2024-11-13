@@ -7,6 +7,11 @@ from create_cache import create_cache
 def prepare_model(model_path, output_dir, model_type, dataset_name, num_classes, data_dir='./data'):
     """Prepare model by splitting it and creating cache."""
     try:
+        # Validate dataset name
+        valid_datasets = ['cifar10', 'cifar100', 'tiny-imagenet', 'visualwakewords']
+        if dataset_name not in valid_datasets:
+            raise ValueError(f"Dataset must be one of {valid_datasets}")
+            
         # Get model configuration
         ModelClass, block_configs, block_type = get_model_config(model_type)
         
@@ -27,7 +32,7 @@ def prepare_model(model_path, output_dir, model_type, dataset_name, num_classes,
         print(f"Successfully split models saved to {output_dir}/blocks")
         
         # Create cache
-        create_cache(output_dir, model_type, dataset_name, num_classes, data_dir)
+        create_cache(output_dir + '/blocks', model_type, dataset_name, num_classes, data_dir)
         print(f"Successfully created cache in {output_dir}")
         
     except Exception as e:
@@ -46,7 +51,7 @@ def main():
                       choices=['resnet50', 'resnet18', 'mobilenetv2'],
                       help='Type of model to split')
     parser.add_argument('--dataset', type=str, default='cifar10',
-                      choices=['cifar10', 'cifar100', 'tiny-imagenet'],
+                      choices=['cifar10', 'cifar100', 'tiny-imagenet', 'visualwakewords'],
                       help='Dataset to create cache for')
     parser.add_argument('--num-classes', type=int, required=True,
                       help='Number of output classes for the model')

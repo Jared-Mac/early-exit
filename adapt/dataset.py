@@ -11,6 +11,9 @@ import pickle
 from sklearn.model_selection import train_test_split
 import os, glob
 from torchvision.io import read_image, ImageReadMode
+from torchvision.datasets import CocoDetection
+import json
+from pycocotools.coco import COCO
 
 class Flame2Data(Dataset):
     def __init__(self, image_dir, transform=None):
@@ -388,3 +391,94 @@ class TinyImageNetDataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         return self.test_dataloader()
+
+class VisualWakeWordsDataset(Dataset):
+    def __init__(self, root, annFile, transform=None):
+        self.coco = COCO(annFile)
+        self.root = root
+        self.transform = transform
+        
+        # Get all image ids
+        self.ids = list(sorted(self.coco.imgs.keys()))
+        
+        # Filter for person/non-person binary classification
+        self.filtered_ids = []
+        for img_id in self.ids:
+            ann_ids = self.coco.getAnnIds(imgIds=img_id)
+            anns = self.coco.loadAnns(ann_ids)
+            
+            # Check if any annotation has a person with area > 10% of image
+            is_person = False
+            for ann in anns:
+                if ann['category_id'] == 1:  # person category
+                    img_info = self.coco.loadImgs(img_id)[0]
+                    img_area = img_info['height'] * img_info['width']
+                    if ann['area'] / img_area > 0.1:
+                        is_person = True
+                        break
+            
+            self.filtered_ids.append((img_id, 1 if is_person else 0))
+
+    def __len__(self):
+        return len(self.filtered_ids)
+
+    def __getitem__(self, idx):
+        img_id, label = self.filtered_ids[idx]
+        img_info = self.coco.loadImgs(img_id)[0]
+        img_path = os.path.join(self.root, img_info['file_name'])
+        
+        image = Image.open(img_path).convert('RGB')
+        if self.transform:
+            image = self.transform(image)
+            
+        return image, label
+
+class VisualWakeWordsDataModule(pl.LightningDataModule):
+    def __init__(self, data_dir='./data/coco', batch_size=32):
+        super().__init__()
+        self.data_dir = data_dir
+        self.batch_size = batch_size
+        self.transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                               std=[0.229, 0.224, 0.225])
+        ])
+
+    def setup(self, stage=None):
+        if stage == 'fit' or stage is None:
+            train_root = os.path.join(self.data_dir, 'train2017')
+            train_annFile = os.path.join(self.data_dir, 'annotations', 'instances_train2017.json')
+            full_train_dataset = VisualWakeWordsDataset(
+                root=train_root,
+                annFile=train_annFile,
+                transform=self.transform
+            )
+            
+            # Split into train and validation
+            train_size = int(0.9 * len(full_train_dataset))
+            val_size = len(full_train_dataset) - train_size
+            self.train_dataset, self.val_dataset = random_split(
+                full_train_dataset, [train_size, val_size]
+            )
+
+        if stage == 'test' or stage is None:
+            val_root = os.path.join(self.data_dir, 'val2017')
+            val_annFile = os.path.join(self.data_dir, 'annotations', 'instances_val2017.json')
+            self.test_dataset = VisualWakeWordsDataset(
+                root=val_root,
+                annFile=val_annFile,
+                transform=self.transform
+            )
+
+    def train_dataloader(self):
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, 
+                         shuffle=True, num_workers=4)
+
+    def val_dataloader(self):
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, 
+                         shuffle=False, num_workers=4)
+
+    def test_dataloader(self):
+        return DataLoader(self.test_dataset, batch_size=self.batch_size, 
+                         shuffle=False, num_workers=4)

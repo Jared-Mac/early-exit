@@ -1,7 +1,7 @@
 import torch
 import torchvision
 import torchvision.transforms as transforms
-from adapt.dataset import CacheDataset, CIFAR10DataModule, CIFAR100DataModule, TinyImageNetDataModule
+from adapt.dataset import CacheDataset, CIFAR10DataModule, CIFAR100DataModule, TinyImageNetDataModule, VisualWakeWordsDataModule
 import os
 import argparse
 from split_model import get_model_config, initialize_blocks
@@ -18,6 +18,10 @@ def get_dataset(dataset_name, data_dir='./data'):
         return datamodule.cifar100_test
     elif dataset_name == 'tiny-imagenet':
         datamodule = TinyImageNetDataModule()
+        datamodule.setup('test')
+        return datamodule.test_dataset
+    elif dataset_name == 'visualwakewords':
+        datamodule = VisualWakeWordsDataModule(data_dir=os.path.join(data_dir, 'coco'))
         datamodule.setup('test')
         return datamodule.test_dataset
     else:

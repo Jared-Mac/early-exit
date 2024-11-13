@@ -10,7 +10,7 @@ import argparse
 from early_exit_resnet import EarlyExitResNet50
 from early_exit_resnet18 import EarlyExitResNet18
 from early_exit_mobilenetv2 import EarlyExitMobileNetV2
-from dataset import CIFAR10DataModule, CIFAR100DataModule
+from adapt.dataset import CIFAR10DataModule, CIFAR100DataModule, VisualWakeWordsDataModule
 from tiny_imagenet_loader import TinyImageNetDataModule
 
 def get_model(model_name, num_classes, input_channels, input_height, input_width, loss_weights):
@@ -35,7 +35,8 @@ def get_datamodule(dataset_name, batch_size):
     datasets = {
         'cifar10': (CIFAR10DataModule, {'num_classes': 10, 'input_size': 32}),
         'cifar100': (CIFAR100DataModule, {'num_classes': 100, 'input_size': 32}),
-        'tiny-imagenet': (TinyImageNetDataModule, {'num_classes': 200, 'input_size': 64})
+        'tiny-imagenet': (TinyImageNetDataModule, {'num_classes': 200, 'input_size': 64}),
+        'visualwakewords': (VisualWakeWordsDataModule, {'num_classes': 2, 'input_size': 224})
     }
     
     if dataset_name not in datasets:
@@ -49,7 +50,7 @@ def main():
     parser.add_argument('--model', type=str, default='resnet18', 
                       choices=['resnet18', 'resnet50', 'mobilenetv2'])
     parser.add_argument('--dataset', type=str, default='cifar10',
-                      choices=['cifar10', 'cifar100', 'tiny-imagenet'])
+                      choices=['cifar10', 'cifar100', 'tiny-imagenet', 'visualwakewords'])
     parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--max_epochs', type=int, default=100)
     parser.add_argument('--loss_weights', type=float, nargs=4, default=[0.25, 0.25, 0.25, 0.25],
