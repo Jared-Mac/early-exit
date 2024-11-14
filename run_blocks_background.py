@@ -52,8 +52,8 @@ def main():
                         default='cpu', help='Device to use for computation')
     parser.add_argument('--batch_size', type=int, default=1, help='Batch size')
     parser.add_argument('--path', type=str, default='models/cifar10', help='Path to model blocks')
-    parser.add_argument('--host_device', type=str, choices=['rpi', 'nano'],
-                        default='rpi', help='Device that run the models')
+    parser.add_argument('--host_device', type=str, choices=['rpi2', 'nano'],
+                        default='rpi2', help='Device that run the models')
     parser.add_argument('--interval', type=float,
                         default=1, help='Interval for each operation')
 
