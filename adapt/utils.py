@@ -4,7 +4,7 @@ import numpy as np
 
 
 class DataTracker:
-    def __init__(self, env, window_size=500):
+    def __init__(self, env, window_size=500, track_stats=False):
         self.env = env
         self.total_classifications = 0
         self.correct_classifications = 0
@@ -20,22 +20,27 @@ class DataTracker:
         self.flops_window = deque(maxlen=window_size)
         self.cumulative_flops = 0
         self.battery_soc_window = deque(maxlen=window_size)
-        self.env.process(self.run())
+        self.exit_logits = []
+        self.exit_confidences = []
+        if track_stats:
+            self.env.process(self.run())
 
     def run(self):
         while True:
             yield self.env.timeout(500)
-            print(f"Rolling accuracy: {self.get_rolling_accuracy():.2f}")
-            if self.latency_window:
-                print(f"Rolling average latency: {self.get_rolling_latency():.2f}")
-            print(f"Rolling exit numbers: {self.get_rolling_exit_numbers()}")
-            print(f"Rolling average data sent: {self.get_rolling_data_sent():.2f} bytes")
-            # print(f"Cumulative data sent: {self.cumulative_data_sent} bytes")
-            print(f"Rolling battery SoC: {self.get_rolling_battery_soc():.2f}")
+            self.print_stats()
+
             # print(f"Rolling battery voltage: {self.get_rolling_battery_voltage():.2f}")
             # print(f"Rolling battery temperature: {self.get_rolling_battery_temperature():.2f}")
 
-    def update(self, accuracy, start_time, block_num, latency, action, total_flops, battery_state):
+    def print_stats(self):
+        print(f"Rolling accuracy: {self.get_rolling_accuracy():.2f}")
+        print(f"Rolling latency: {self.get_rolling_latency():.2f}")
+        print(f"Rolling exit numbers: {self.get_rolling_exit_numbers()}")
+        print(f"Rolling average data sent: {self.get_rolling_data_sent():.2f} bytes")
+        print(f"Rolling battery SoC: {self.get_rolling_battery_soc():.2f}")
+
+    def update(self, accuracy, start_time, block_num, latency, action, total_flops, battery_state, confidence=None):
         self.total_classifications += 1
         self.correct_classifications += int(accuracy)
         self.accuracy_window.append(accuracy)
@@ -50,6 +55,12 @@ class DataTracker:
         self.battery_soc_window.append(battery_state[0].item())
         # self.battery_voltage_window.append(battery_state[1].item())
         # self.battery_temperature_window.append(battery_state[2].item())
+        if confidence is not None:
+            self.exit_confidences.append({
+                'block': block_num,
+                'confidence': confidence,
+                'accuracy': accuracy
+            })
 
     def update_data_sent(self, data_sent):
         self.data_sent_window.append(data_sent)
@@ -132,6 +143,9 @@ class DataTracker:
         if not self.battery_soc_window:
             return 0
         return self.battery_soc_window[-1]
+
+    def get_exit_logits(self):
+        return self.exit_confidences
 
 def generate_threshold_combinations(start=0.6, end=0.9, step=0.1):
     thresholds = np.arange(start, end + step, step)

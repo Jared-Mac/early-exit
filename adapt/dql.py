@@ -2,9 +2,18 @@ import torch
 from torch import nn, optim
 import torch.nn.functional as F
 import numpy as np
-from collections import deque
+from collections import deque, defaultdict
 import random
 import simpy
+import torch.backends.cudnn as cudnn
+if torch.cuda.is_available():
+    cudnn.benchmark = True  # Enable cudnn auto-tuner
+
+def to_tensor(x, device):
+    """Efficiently convert numpy array to tensor on device"""
+    if isinstance(x, np.ndarray):
+        return torch.from_numpy(x).to(device)
+    return x.to(device) if isinstance(x, torch.Tensor) else torch.tensor(x, device=device)
 
 def calculate_reward(action, accuracy, latency, block_num, battery_state):
     base_reward = 0
@@ -27,7 +36,7 @@ def calculate_reward(action, accuracy, latency, block_num, battery_state):
         base_reward -= 2  # Small penalty for transmission energy use
     
     # Adjust reward based on battery state
-    battery_soc = battery_state[0].item()
+    battery_soc = battery_state[0]
     if battery_soc < 0.2:  # If battery is low
         if action == 2:  # Penalize transmission more heavily
             base_reward -= 5
@@ -41,8 +50,9 @@ def calculate_reward(action, accuracy, latency, block_num, battery_state):
     return base_reward
 
 class ReplayBuffer:
-    def __init__(self, capacity):
+    def __init__(self, capacity, device):
         self.buffer = deque(maxlen=capacity)
+        self.device = device
 
     def add(self, experience):
         self.buffer.append(experience)
@@ -50,7 +60,26 @@ class ReplayBuffer:
     def sample(self, batch_size):
         batch = random.sample(self.buffer, batch_size)
         states, actions, rewards, next_states, dones = zip(*batch)
-        return states, actions, rewards, next_states, dones
+        
+        # Process state dictionaries efficiently
+        processed_states = {
+            'exit': torch.stack([to_tensor(s['exit'], self.device) for s in states]),
+            'image': torch.stack([to_tensor(s['image'], self.device) for s in states]).squeeze(1),
+            'logits': torch.stack([to_tensor(s['logits'], self.device) for s in states]),
+            'battery': torch.stack([to_tensor(s['battery'], self.device) for s in states])
+        }
+        
+        processed_next_states = {
+            'exit': torch.stack([to_tensor(s['exit'], self.device) for s in next_states]),
+            'image': torch.stack([to_tensor(s['image'], self.device) for s in next_states]).squeeze(1),
+            'logits': torch.stack([to_tensor(s['logits'], self.device) for s in next_states]),
+            'battery': torch.stack([to_tensor(s['battery'], self.device) for s in next_states])
+        }
+        return (processed_states,
+                torch.tensor(actions, device=self.device, dtype=torch.long),
+                torch.tensor(rewards, device=self.device, dtype=torch.float32),
+                processed_next_states,
+                torch.tensor(dones, device=self.device, dtype=torch.float32))
 
     def __len__(self):
         return len(self.buffer)
@@ -104,12 +133,12 @@ class DQLAgent:
     def __init__(self, env, num_classes, num_exit, image_shape, battery_features, memory_size=100000, batch_size=64, gamma=0.99, lr=1e-3, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.995):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.num_actions = 3
-        self.model = DQNet(num_classes, num_exit, 3, image_shape, battery_features).to(self.device)  # Changed from 2 to 3
-        self.target_model = DQNet(num_classes, num_exit, 3, image_shape, battery_features).to(self.device)  # Changed from 2 to 3
+        self.model = DQNet(num_classes, num_exit, 3, image_shape, battery_features).to(self.device)
+        self.target_model = DQNet(num_classes, num_exit, 3, image_shape, battery_features).to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
         self.loss_fn = nn.MSELoss()
         self.env = env
-        self.memory = ReplayBuffer(memory_size)
+        self.memory = ReplayBuffer(memory_size, self.device)
         self.batch_size = batch_size
         self.gamma = gamma
         self.epsilon = epsilon_start
@@ -117,15 +146,26 @@ class DQLAgent:
         self.epsilon_decay = epsilon_decay
         self.update_frequency = 10
         self.env.process(self.train())
+        self.loss_history = deque(maxlen=100)  # Store recent losses
+        self.convergence_threshold = 0.5  # Threshold for convergence
+        self.min_iterations = 1000  # Minimum iterations before checking convergence
+        self.converged = False
     def select_action(self, exits, image, logits, battery_state):
         if random.random() < self.epsilon:
             return random.randint(0, self.num_actions - 1)
-        else:
-            image = image.unsqueeze(0).to(self.device)  # Add batch dimension
-            logits = logits.unsqueeze(0).to(self.device)
-            exits = exits.unsqueeze(0).to(self.device)
-            battery_state = battery_state.unsqueeze(0).to(self.device)
-            q_values = self.model(exits, image, logits, battery_state)
+        
+        with torch.no_grad():
+            # Batch all inputs at once
+            inputs = {
+                'exits': exits.unsqueeze(0),
+                'image': image.unsqueeze(0),
+                'logits': logits.unsqueeze(0),
+                'battery_state': battery_state.unsqueeze(0)
+            }
+            # Move to device in one operation
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            q_values = self.model(inputs['exits'], inputs['image'], 
+                                inputs['logits'], inputs['battery_state'])
             return torch.argmax(q_values, dim=1).item()
 
     def store_experience(self, experience):
@@ -133,40 +173,27 @@ class DQLAgent:
 
     def update(self):
         if len(self.memory) < self.batch_size:
-            return
+            return 0
         
-        experiences = self.memory.sample(self.batch_size)
-        states, actions, rewards, next_states, dones = experiences
-
-        # Extract images, logits, and exits from state dictionaries
-        state_exits, state_images, state_logits, state_battery = [], [], [], []
-        next_state_exits, next_state_images, next_state_logits, next_state_battery = [], [], [], []
-        for state in states:
-            state_exits.append(state['exit'])
-            state_images.append(torch.tensor(state['image'], dtype=torch.float32).squeeze().to(self.device))
-            state_logits.append(torch.tensor(state['logits'], dtype=torch.float32).to(self.device))
-            state_battery.append(torch.tensor(state['battery'], dtype=torch.float32).to(self.device))
-        for next_state in next_states:
-            next_state_exits.append(next_state['exit'])
-            next_state_images.append(torch.tensor(next_state['image'], dtype=torch.float32).squeeze().to(self.device))
-            next_state_logits.append(torch.tensor(next_state['logits'], dtype=torch.float32).to(self.device))
-            next_state_battery.append(torch.tensor(next_state['battery'], dtype=torch.float32).to(self.device))
-        # Stack and permute to create batch tensor  s
-        state_exits = torch.stack(state_exits).to(self.device)
-        state_images = torch.stack(state_images).permute(0, 1, 2, 3).to(self.device)
-        state_logits = torch.stack(state_logits).to(self.device)
-        state_battery = torch.stack(state_battery).to(self.device)
-        next_state_exits = torch.stack(next_state_exits).to(self.device)
-        next_state_images = torch.stack(next_state_images).permute(0, 1, 2, 3).to(self.device)
-        next_state_logits = torch.stack(next_state_logits).to(self.device)
-        next_state_battery = torch.stack(next_state_battery).to(self.device)
-        actions = torch.tensor(actions, dtype=torch.long).unsqueeze(1).to(self.device)
-        rewards = torch.tensor(rewards, dtype=torch.float32).unsqueeze(1).to(self.device)
-        dones = torch.tensor(dones, dtype=torch.float32).unsqueeze(1).to(self.device)
+        states, actions, rewards, next_states, dones = self.memory.sample(self.batch_size)
         
-        current_q_values = self.model(state_exits, state_images, state_logits, state_battery).gather(1, actions)
-        next_q_values = self.target_model(next_state_exits, next_state_images, next_state_logits, next_state_battery).max(1)[0].detach().unsqueeze(1)
-        target_q_values = rewards + self.gamma * next_q_values * (1 - dones)
+        # States and next_states are already processed by ReplayBuffer
+        with torch.no_grad():
+            next_q_values = self.target_model(
+                next_states['exit'],
+                next_states['image'],
+                next_states['logits'],
+                next_states['battery']
+            ).max(1)[0].unsqueeze(1)
+            
+            target_q_values = rewards.unsqueeze(1) + self.gamma * next_q_values * (1 - dones.unsqueeze(1))
+        
+        current_q_values = self.model(
+            states['exit'],
+            states['image'],
+            states['logits'],
+            states['battery']
+        ).gather(1, actions.unsqueeze(1))
         
         loss = self.loss_fn(current_q_values, target_q_values)
         
@@ -175,7 +202,11 @@ class DQLAgent:
         self.optimizer.step()
         
         self.epsilon = max(self.epsilon_end, self.epsilon * self.epsilon_decay)
+        loss = loss.item()
+        self.loss_history.append(loss)
         
+        return loss
+
     def update_target_model(self):
         self.target_model.load_state_dict(self.model.state_dict())
     def train(self):
@@ -201,3 +232,14 @@ class DQLAgent:
         self.target_model.load_state_dict(checkpoint['target_net_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         print(f"Model loaded from {path}")
+
+    def check_convergence(self):
+        """Check if training has converged based on recent loss values."""
+        if len(self.loss_history) < self.loss_history.maxlen:
+            return False
+            
+        # Calculate average change in loss over recent iterations
+        loss_changes = np.diff(list(self.loss_history))
+        avg_change = np.abs(loss_changes).mean()
+        
+        return avg_change, self.convergence_threshold

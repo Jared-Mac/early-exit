@@ -74,26 +74,52 @@ class Battery:
 
 
 class Camera:
-    def __init__(self, env, cache_dataset, interval=1):
+    def __init__(self, env, cache_dataset, interval=1, batch_size=32):
         self.env = env
         self.interval = interval
         self.data_loader = cache_dataset
-        self.iterator = iter(self.data_loader)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.batch_size = batch_size
+        self.batch_buffer = []
+        
+        # Get first item to determine shape
+        self.iterator = iter(self.data_loader) 
         first_item = next(self.iterator)
-        # Check if first_item is a list or tuple
         if isinstance(first_item, (list, tuple)):
-            self.image_shape = first_item[0].shape  # Assuming image is the first element
+            self.image_shape = first_item[0].shape
         else:
-            self.image_shape = first_item['image'].shape  # For dictionary format
+            self.image_shape = first_item['image'].shape
+            
         self.out = None
         self.env.process(self.run())
 
     def run(self):
         while True:
-            for item in self.data_loader:
+            # Preload batch to GPU
+            batch = []
+            for i, item in enumerate(self.data_loader):
+                if isinstance(item, (list, tuple)):
+                    item = (item[0].to(self.device), item[1])
+                else:
+                    item['image'] = item['image'].to(self.device)
+                    if 'logits' in item:
+                        item['logits'] = [l.to(self.device) for l in item['logits']]
+                
+                batch.append(item)
+                
+                if len(batch) == self.batch_size:
+                    # Process full batch
+                    for b in batch:
+                        if self.out:
+                            self.out.put(b)
+                            yield self.env.timeout(self.interval)
+                    batch = []
+                    
+            # Process remaining items
+            for b in batch:
                 if self.out:
-                    self.out.put(item)
-                yield self.env.timeout(self.interval)
+                    self.out.put(b)
+                    yield self.env.timeout(self.interval)
 
 class Head:
     def __init__(self, env, element_id, agent, data_tracker, exits=4, debug=False):
@@ -132,11 +158,14 @@ class Head:
             
             # Update battery for processing
             self.battery.update(self.get_processing_current(), processing_time)
-            image = data['image'].clone().detach() if isinstance(data['image'], torch.Tensor) else torch.tensor(data['image'], dtype=torch.float32)
-            logits = data['logits'][block_num].clone().detach() 
+            image = data['image']
+            logits = data['logits'][block_num]
             # Get current battery state
             battery_state = self.battery.get_state()
             data['battery'] = battery_state
+
+            # Get logits and confidence
+            confidence = torch.max(torch.softmax(logits, dim=0)).item()
 
             # Run Agent
             yield self.env.timeout(AGENT_TIME)
@@ -163,7 +192,7 @@ class Head:
                 next_state = {
                     'exit': self.exits[next_block_num],
                     'image': image,
-                    'logits': data['logits'][next_block_num].clone().detach() if isinstance(data['logits'][next_block_num], torch.Tensor) else torch.tensor(data['logits'][next_block_num], dtype=torch.float32),
+                    'logits': data['logits'][next_block_num]if isinstance(data['logits'][next_block_num], torch.Tensor) else torch.tensor(data['logits'][next_block_num], dtype=torch.float32),
                     'battery': data['battery']
                 }
                 self.agent.store_experience((state, action, reward, next_state, False))
@@ -186,11 +215,11 @@ class Head:
                 next_state = {
                     'exit': self.exits[next_block_num],
                     'image': image,
-                    'logits': data['logits'][next_block_num].clone().detach() if isinstance(data['logits'][next_block_num], torch.Tensor) else torch.tensor(data['logits'][next_block_num], dtype=torch.float32),
+                    'logits': data['logits'][next_block_num],
                     'battery': data['battery']
                 }
                 self.agent.store_experience((state, action, reward, next_state, True))
-                self.data_tracker.update(accuracy, start_time, block_num, current_latency, action, total_flops, battery_state)
+                self.data_tracker.update(accuracy, start_time, block_num, current_latency, action, total_flops, battery_state, confidence)
             elif action == 2:  # Exit and transmit  
                 accuracy = int(logits.argmax()) == int(data['label'])
                 prediction = torch.argmax(softmax(logits))
@@ -293,7 +322,7 @@ class Tail:
             }
             # Calculate reward based on previous classification accuracy
             previous_logits = data['logits'][block_num]
-            previous_prediction = torch.argmax(previous_logits).item()
+            previous_prediction = torch.argmax(previous_logits)
             true_label = data['label']
             
 
@@ -304,7 +333,7 @@ class Tail:
             else:
                 reward = 10
             self.agent.store_experience((state, action, reward, next_state, True))
-            final_prediction = torch.argmax(data['logits'][3]).item()
+            final_prediction = torch.argmax(data['logits'][3])
             accuracy = final_prediction == true_label
             
             self.data_tracker.update(accuracy, start_time, 3, latency, action, total_flops,data['battery'])
@@ -359,7 +388,7 @@ class AlwaysTransmitTail(Tail):
             block_num = packet.block_num
             start_time = packet.start_time
             latency = self.env.now - start_time
-            final_prediction = torch.argmax(data['logits'][3]).item()
+            final_prediction = torch.argmax(data['logits'][3])
             true_label = data['label']
             accuracy = final_prediction == true_label
             total_flops = packet.total_flops
@@ -399,7 +428,7 @@ class EarlyExitHead(Head):
             total_flops += block_cpu_flops[f'block{block_num}']
             
             # Check if confidence exceeds threshold
-            confidence = torch.softmax(logits, dim=0).max().item()
+            confidence = torch.softmax(logits, dim=0).max().detach().cpu().numpy()
             latency = self.env.now - start_time
             
             # Get current battery state
@@ -417,7 +446,7 @@ class EarlyExitHead(Head):
 
     def send_to_data_tracker(self, data, block_num, latency, total_flops, battery_state):
         true_label = data['label']
-        prediction = torch.argmax(data['logits'][block_num]).item()
+        prediction = torch.argmax(data['logits'][block_num]).detach().cpu().numpy()
         accuracy = prediction == true_label
         self.data_tracker.update(accuracy, self.start_times[self.data_counter], block_num, latency, 1, total_flops, battery_state)  # Action 1 for exit without transmitting
 
@@ -436,7 +465,7 @@ class EarlyExitTail(Tail):
             block_num = packet.block_num
             start_time = packet.start_time
             latency = self.env.now - start_time
-            final_prediction = torch.argmax(data['logits'][block_num]).item()
+            final_prediction = torch.argmax(data['logits'][block_num]).detach().cpu().numpy()
             true_label = data['label']
             accuracy = final_prediction == true_label
             self.data_tracker.update(accuracy, start_time, block_num, latency, 2, total_flops,data['battery'])

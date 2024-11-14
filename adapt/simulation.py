@@ -65,6 +65,11 @@ class Simulation:
         self.stability_threshold = 0.03
         self.strategy = strategy
         self.evaluation_time = 1000  # Time to run evaluation after training
+        
+        # Add new parameters for convergence checking and loss printing
+        self.print_interval = 100  # Print stats every 100 steps
+        self.convergence_check_interval = 500  # Check convergence every 500 steps
+        self.min_training_steps = 1000  # Minimum steps before checking convergence
     
     def is_training_stable(self):
         accuracy_history = self.data_tracker.get_accuracy_history()
@@ -81,42 +86,69 @@ class Simulation:
         if self.strategy != 'dql':
             raise ValueError("Training is only applicable for DQL strategy")
         
-        self.env.run(until=max_sim_time)
+        start_time = self.env.now
+        last_print_time = start_time
+        last_convergence_check = start_time
+        avg_change = float('inf')  # Initialize avg_change
+        
+        def should_continue():
+            current_time = self.env.now
+            training_duration = current_time - start_time
+            
+            nonlocal avg_change  # Add nonlocal declaration
+            
+            # Check for convergence periodically
+            nonlocal last_convergence_check
+            if (current_time - start_time >= self.min_training_steps and 
+                current_time - last_convergence_check >= self.convergence_check_interval):
+                avg_change, threshold = self.agent.check_convergence()
+                if avg_change < threshold:
+                    print("\nTraining converged!")
+                    return False
+                last_convergence_check = current_time
+            
+            # Print statistics periodically
+            nonlocal last_print_time
+            if current_time - last_print_time >= self.print_interval:
+                avg_loss = np.mean(list(self.agent.loss_history)) if self.agent.loss_history else float('nan')
+                print(f"\nTime step {current_time}:")
+                print(f"Average loss: {avg_loss:.4f}")
+                print(f"Rolling accuracy: {self.data_tracker.get_rolling_accuracy():.2f}")
+                print(f"Rolling latency: {self.data_tracker.get_rolling_latency():.2f}")
+                print(f"Average change: {avg_change:.4f}")
+                last_print_time = current_time
+            
+            return current_time - start_time < max_sim_time
+
+        # Run simulation until convergence or max_sim_time
+        while should_continue():
+            self.env.step()
         
         print("\nTraining completed")
-        print(f"Final rolling accuracy: {self.data_tracker.get_rolling_accuracy():.2f}")
-        print(f"Final rolling latency: {self.data_tracker.get_rolling_latency():.2f}")
-        
         return self.agent
 
     def evaluate(self, max_sim_time=1000):
-        # Set DQNet to evaluation mode if using DQL strategy
         if self.strategy == 'dql':
             self.agent.model.eval()
         
         self.env.run(until=max_sim_time)
-        print(f"Final rolling accuracy: {self.data_tracker.get_rolling_accuracy():.2f}")
-        final_accuracy = self.data_tracker.get_current_accuracy()
-        print(f"\nEvaluation results for {self.strategy.upper()} strategy:")
-        print(f"Final accuracy: {final_accuracy:.2f}")
-        print(f"Final rolling accuracy: {self.data_tracker.get_rolling_accuracy():.2f}")
-        print(f"Final rolling latency: {self.data_tracker.get_rolling_latency():.2f}")
-        print(f"Final rolling exit numbers: {self.data_tracker.get_rolling_exit_numbers()}")
-        print(f"Cumulative exit numbers: {self.data_tracker.get_cumulative_exit_numbers()}")
-        print(f"Cumulative action numbers: {self.data_tracker.get_cumulative_action_numbers()}")
-        print(f"Average data sent: {self.data_tracker.get_rolling_data_sent():.2f} bytes")
-        print(f"Cumulative data sent: {self.data_tracker.get_cumulative_data_sent()} bytes")
-        print(f"Average CPU FLOPS: {self.data_tracker.get_rolling_flops():.2f}")
-        print(f"Cumulative CPU FLOPS: {self.data_tracker.get_cumulative_flops()}")
-        print(f"Final Battery SoC: {self.data_tracker.get_final_battery_soc():.2f}")
+        
+        # Get exit confidences in the format expected by visualization
+        exit_confidences = self.data_tracker.get_exit_logits()
+        logits_list = []
+        if exit_confidences:
+            # Create a list of lists where each sublist represents confidences for each block
+            # Initialize with zeros
+            current_logits = [0] * 4
+            for conf in exit_confidences:
+                current_logits = [0] * 4  # Reset for each decision
+                current_logits[conf['block']] = conf['confidence']
+                logits_list.append(current_logits)
+        
         return {
-            'accuracy': final_accuracy,
+            'accuracy': self.data_tracker.get_current_accuracy(),
             'avg_latency': self.data_tracker.get_rolling_latency(),
             'exit_numbers': self.data_tracker.get_cumulative_exit_numbers(),
-            'action_numbers': self.data_tracker.get_cumulative_action_numbers(),
-            'avg_data_sent': self.data_tracker.get_rolling_data_sent(),
-            'cumulative_data_sent': self.data_tracker.get_cumulative_data_sent(),
-            'avg_flops': self.data_tracker.get_rolling_flops(),
-            'cumulative_flops': self.data_tracker.get_cumulative_flops(),
-            'final_battery_soc': self.data_tracker.get_final_battery_soc()
+            'exit_logits': logits_list,
+            'accuracies': [conf['accuracy'] for conf in exit_confidences] if exit_confidences else []
         }

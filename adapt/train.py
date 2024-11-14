@@ -8,7 +8,7 @@ def train_dqn(dataset='cifar10', model_type='resnet50', max_sim_time=50000):
         'cifar10': 10,
         'cifar100': 100,
         'tiny-imagenet': 200,
-        'visualwakewords': 2,
+        'visualwakewords': 2
     }
     
     num_classes = dataset_classes.get(dataset, 10)  # Default to 10 if dataset not found

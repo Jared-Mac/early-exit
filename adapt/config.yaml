@@ -49,14 +49,14 @@ agent_time: 0.001
 current_draw:
   mobilenetv2:
     processing: 40  # mA for processing
-    transmission: 90  # mA for transmission
+    transmission: 310  # mA for transmission
   resnet18:
     processing: 50  # mA for processing
-    transmission: 100  # mA for transmission
+    transmission: 310  # mA for transmission
   resnet50:
     processing: 60  # mA for processing
-    transmission: 110  # mA for transmission
-  idle: 1  # mA for idle state
+    transmission: 310  # mA for transmission
+  idle: 300  # mA for idle state
 
 # Battery parameters
 battery:

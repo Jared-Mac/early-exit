@@ -22,3 +22,12 @@ tiny-imagenet-200/
 venv/
 model_data.txt
 nohup.out
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.svg
+*.ico
+*.bmp

@@ -28,6 +28,7 @@ def evaluate_strategies(dataset, model_type):
         'cifar10': 10,
         'cifar100': 100,
         'tiny-imagenet': 200,
+        'visualwakewords': 2
         # Add other datasets as needed
     }
     
