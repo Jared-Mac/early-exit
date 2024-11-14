@@ -156,8 +156,8 @@ def main():
                       default='cpu', help='Device to use for computation')
     parser.add_argument('--batch_size', type=int, default=1, help='Batch size') 
     parser.add_argument('--path', type=str, default='models/cifar10', help='Path to model blocks')
-    parser.add_argument('--host_device', type=str, choices=['rpi', 'nano'],
-                        default='rpi', help='Device that run the models')
+    parser.add_argument('--host_device', type=str, choices=['rpi2', 'nano'],
+                        default='rpi2', help='Device that run the models')
     parser.add_argument('--metrics', type=str, default='flops', choices=['flops', 'proc_time', 'VA', 'VA_trans'], nargs='+', help='Mtrics to measure')
     parser.add_argument('--VA_sps', type=float, default=10, help='sampling rate to collect VA data')
     parser.add_argument('--VA_spnum', type=float, default=200, help='number of samples to collect VA data')
@@ -178,7 +178,7 @@ def main():
     repeat_times = args.repeat
     model_name = args.model
 
-    data_dir = "measurement_data/rpi"
+    data_dir = "measurement_data/rpi2"
 
     for metric in metrics:
         if metric == 'proc_time':
