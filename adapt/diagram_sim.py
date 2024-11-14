@@ -23,7 +23,8 @@ def run_single_simulation(thresholds, cached_data_file, evaluation_time):
     
     sim = Simulation(strategy='early_exit_custom',
                     cached_data_file=cached_data_file,
-                    confidence_thresholds=full_thresholds)
+                    confidence_thresholds=full_thresholds,
+                    num_classes=10)
     
     result = sim.evaluate(max_sim_time=evaluation_time)
     
@@ -36,18 +37,23 @@ def run_single_simulation(thresholds, cached_data_file, evaluation_time):
         'exit_distribution': result['exit_numbers']
     }
 
-def test_threshold_combinations(thresholds_range=np.arange(0.5, 1.0, 0.05),
+def test_threshold_combinations(thresholds_range=None,
                               cached_data_file='models/cifar10/resnet18/blocks/cached_logits.pkl',
                               evaluation_time=1000,
                               max_workers=4):
     """
     Test different combinations of confidence thresholds in parallel
     """
+    # Use linspace instead of arange for better floating point precision
+    if thresholds_range is None:
+        thresholds_range = np.linspace(0.5, 1.0, num=11)  # This gives: 0.5, 0.55, 0.6, ..., 1.0
+    
+    # Generate all combinations without filtering
     combinations = list(itertools.product(thresholds_range, repeat=3))
     
     results = []
     # Process in smaller batches to manage memory
-    batch_size = 10
+    batch_size = 15
     for i in range(0, len(combinations), batch_size):
         batch = combinations[i:i+batch_size]
         
@@ -624,10 +630,7 @@ def plot_stacked_3d_surfaces_side_by_side(results_df, dql_results_df=None):
             ax.yaxis.set_major_locator(plt.MaxNLocator(5))
             ax.zaxis.set_major_locator(plt.MaxNLocator(5))
             
-            # Add legend
-            if dql_results_df is not None:
-                ax.legend(['Threshold Surface', 'DQL Exit Confidences', 'DQL Mean'])
-    
+
     plt.suptitle('Threshold-based vs DQL Performance Comparison', 
                  y=0.95, 
                  size=14)
@@ -892,8 +895,7 @@ def plot_logit_confidence_impact(results_df, dql_results_df):
     dql_results_df['exit_numbers'] = dql_results_df['exit_distribution'].apply(parse_exit_dist)
     for i in range(4):
         dql_results_df[f'exit_{i}_pct'] = dql_results_df['exit_numbers'].apply(
-            lambda x: (x[i] / sum(x)) * 100 if sum(x) > 0 else 0
-        )
+            lambda x: (x[i] / sum(x)) * 100 if sum(x) > 0 else 0)
     
     # Plot 1: Exit Distribution
     ax1 = fig.add_subplot(gs[0])
@@ -960,6 +962,7 @@ def main():
     parser = argparse.ArgumentParser(description='Run threshold analysis simulation')
     parser.add_argument('--dataset', type=str, required=True, help='Dataset name (e.g., cifar10, visualwakewords)')
     parser.add_argument('--model', type=str, required=True, help='Model name (e.g., resnet18, mobilenetv2)')
+    parser.add_argument('--num-classes', type=int, default=10, help='Number of classes in the dataset')
     parser.add_argument('--threshold-step', type=float, default=0.05, help='Step size for threshold grid search')
     parser.add_argument('--threshold-min', type=float, default=0.5, help='Minimum threshold value')
     parser.add_argument('--threshold-max', type=float, default=1.0, help='Maximum threshold value')
@@ -994,15 +997,12 @@ def main():
             if i % 10 == 0:  # Print progress every 10 combinations
                 print(f"Progress: {i}/{total_combinations} combinations ({i/total_combinations*100:.1f}%)")
             
-            # Ensure thresholds are in descending order
-            sorted_thresholds = sorted([t1, t2, t3], reverse=True)
-            t1, t2, t3 = sorted_thresholds
-            
-            # Initialize simulation
+            # Initialize simulation with thresholds in original order
             sim = Simulation(
                 strategy='early_exit_custom',
                 cached_data_file=cache_path,
-                confidence_thresholds=[t1, t2, t3, min(sorted_thresholds)]
+                confidence_thresholds=[t1, t2, t3, min([t1, t2, t3])],
+                num_classes=args.num_classes
             )
             
             # Run evaluation
@@ -1025,7 +1025,7 @@ def main():
         results_df.to_pickle(results_path)
     
     # Also save as CSV for human readability
-    output_file = f'threshold_results_{args.dataset}_{args.model}.csv'
+    output_file = f'models/{args.dataset}/{args.model}/threshold_results_{args.dataset}_{args.model}.csv'
     results_df.to_csv(output_file, index=False)
     
     if args.dql_model:
@@ -1036,7 +1036,8 @@ def main():
         sim = Simulation(
             strategy='dql',
             cached_data_file=cache_path,
-            load_model=args.dql_model
+            load_model=args.dql_model,
+            num_classes=args.num_classes
         )
         
         # Run evaluation and collect exit logits
@@ -1130,5 +1131,77 @@ def main():
         ['exit_std']
     ])
 
+def plot_previous_results():
+    """
+    Load previous results and generate side-by-side accuracy surface plots for three threshold3 values,
+    with latency contour lines overlaid.
+    """
+    print("Loading previous results...")
+    
+    # Load threshold results
+    results_df = pd.read_csv('models/visualwakewords/mobilenetv2/threshold_results_visualwakewords_mobilenetv2.csv')
+    
+    # Create 3D plots
+    fig = plt.figure(figsize=(20, 8))
+    
+    # Get unique threshold values and filter out values below 0.7
+    thresh1 = sorted([t for t in results_df['threshold1'].unique() if t >= 0.7])
+    thresh2 = sorted([t for t in results_df['threshold2'].unique() if t >= 0.7])
+    thresh3_values = sorted(results_df['threshold3'].unique())
+    # Select three evenly spaced threshold3 values
+    selected_thresh3 = [
+        thresh3_values[0],  # First value
+        thresh3_values[len(thresh3_values)//2],  # Middle value
+        thresh3_values[-1]  # Last value
+    ]
+    
+    # Create coordinate meshgrid
+    X, Y = np.meshgrid(thresh1, thresh2)
+    
+    # Plot surface for each selected threshold3 value
+    for idx, thresh3 in enumerate(selected_thresh3):
+        ax = fig.add_subplot(1, 3, idx+1, projection='3d')
+        
+        Z_accuracy = np.zeros_like(X)
+        Z_latency = np.zeros_like(X)
+        for i, t1 in enumerate(thresh1):
+            for j, t2 in enumerate(thresh2):
+                mask = (results_df['threshold1'] == t1) & (results_df['threshold2'] == t2) & (results_df['threshold3'] == thresh3)
+                if mask.any():
+                    Z_accuracy[j,i] = results_df[mask]['accuracy'].values[0]
+                    Z_latency[j,i] = results_df[mask]['avg_latency'].values[0]
+                else:
+                    print(f"Warning: Missing data for t1={t1}, t2={t2}, t3={thresh3}")
+                    Z_accuracy[j,i] = np.nan
+                    Z_latency[j,i] = np.nan
+                    
+        # Plot accuracy surface
+        surf = ax.plot_surface(X, Y, Z_accuracy,
+                             cmap='viridis',
+                             alpha=0.8)
+        
+        # Add latency contours
+        # Project onto z planes at regular intervals
+        z_levels = np.linspace(Z_accuracy.min(), Z_accuracy.max(), 6)
+        for z_level in z_levels:
+            CS = ax.contour(X, Y, Z_latency, levels=10, 
+                          zdir='z', offset=z_level,
+                          colors='red', alpha=0.5, linewidths=1)
+            ax.clabel(CS, inline=True, fontsize=8, fmt='%.2f')
+            
+        ax.set_xlabel('Exit 1 Threshold')
+        ax.set_ylabel('Exit 2 Threshold')
+        ax.set_zlabel('Accuracy')
+        ax.view_init(elev=30, azim=160)
+        ax.set_title(f'Threshold 3 = {thresh3:.2f}')
+    
+    plt.suptitle('Accuracy Surfaces with Latency Contours for Different Exit 3 Thresholds')
+    plt.tight_layout()
+    plt.savefig('threshold_accuracy_surfaces.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    print("Visualization completed")
+
+
 if __name__ == "__main__":
-    main()
+    # main()
+    plot_previous_results()

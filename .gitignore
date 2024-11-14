@@ -31,3 +31,5 @@ nohup.out
 *.svg
 *.ico
 *.bmp
+measurement_data.rar
+*.rar
